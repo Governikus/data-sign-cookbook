@@ -5,4 +5,5 @@ keycloak.clientSecret=your client secret
 #example.provider=BV
 #example.provider=DTRUST
 example.provider=
+example.userId=
 example.sealId=

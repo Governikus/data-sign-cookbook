@@ -5,11 +5,12 @@ import de.governikus.datasign.cookbook.types.Provider;
 import de.governikus.datasign.cookbook.types.SignatureLevel;
 import de.governikus.datasign.cookbook.types.SignatureNiveau;
 import de.governikus.datasign.cookbook.types.request.SignatureParameter;
-import de.governikus.datasign.cookbook.types.request.SealToBeSignedTransactionRequest;
+import de.governikus.datasign.cookbook.types.request.SignatureToBeSignedTransactionRequest;
+import de.governikus.datasign.cookbook.types.request.TanAuthorizeRequest;
 import de.governikus.datasign.cookbook.types.request.ToBeSigned;
-import de.governikus.datasign.cookbook.types.response.AvailableSeals;
 import de.governikus.datasign.cookbook.types.response.Certificate;
-import de.governikus.datasign.cookbook.types.response.ToBeSignedSealTransaction;
+import de.governikus.datasign.cookbook.types.response.ToBeSignedSignTransaction;
+import de.governikus.datasign.cookbook.types.response.UserState;
 import de.governikus.datasign.cookbook.util.DSSFactory;
 import eu.europa.esig.dss.enumerations.DigestAlgorithm;
 import eu.europa.esig.dss.enumerations.EncryptionAlgorithm;
@@ -28,12 +29,12 @@ import java.util.UUID;
 import static de.governikus.datasign.cookbook.util.AccessTokenUtil.retrieveAccessToken;
 
 /**
- * Example for to-be-signed based sealing. This is more low level than sealing documents.
+ * Example for to-be-signed based signing. This is more low level than signing documents.
  */
-public class SealToBeSignedExample extends AbstractExample {
+public class SignToBeSignedExample extends AbstractExample {
 
     public static void main(String[] args) throws Exception {
-        new SealToBeSignedExample().runExample();
+        new SignToBeSignedExample().runExample();
     }
 
     public void runExample() throws Exception {
@@ -44,22 +45,25 @@ public class SealToBeSignedExample extends AbstractExample {
 
         var provider = Provider.valueOf(props.getProperty("example.provider"));
 
-        // GET /seals
-        var availableSeals = send(
-                GET("/seals")
+        var userId = props.getProperty("example.userId");
+
+        // GET /users/{userId}/state
+        var userState = send(
+                GET("/users/%s/state".formatted(URLEncoder.encode(userId, StandardCharsets.UTF_8)))
                         .header("provider", provider.toString())
                         .header("Authorization", accessToken.toAuthorizationHeader()),
-                AvailableSeals.class);
+                UserState.class);
 
-        // use these to discover which seals are available and pick one sealId
-        System.out.println("availableSeals = " + availableSeals);
+        // ensure the user's account is ready for signing,
+        // otherwise ask the user to visit the DATA Sign web application "Mein Konto" to register an account for the provider
+        if (userState.state() != UserState.State.READY) {
+            System.err.println("The user account is not ready for signing. Please visit 'Mein Konto'.");
+            return;
+        }
 
-        // here we use the sealId from our cookbook.properties file, make sure the seal is available
-        var sealId = props.getProperty("example.sealId");
-
-        // GET /seals/{sealId}/certificates
+        // GET /users/{userId}/certificates
         var certificate = send(
-                GET("/seals/%s/certificates".formatted(URLEncoder.encode(sealId, StandardCharsets.UTF_8)))
+                GET("/users/%s/certificates".formatted(URLEncoder.encode(userId, StandardCharsets.UTF_8)))
                         .header("provider", provider.toString())
                         .header("Authorization", accessToken.toAuthorizationHeader()),
                 Certificate.class);
@@ -74,17 +78,55 @@ public class SealToBeSignedExample extends AbstractExample {
         var externalCMSService = DSSFactory.externalCMSService();
         var dtbs = externalCMSService.getDataToSign(documentDigest, signatureParameter);
 
-        // POST /seal/to-be-signed/transactions
+        // POST /sign/to-be-signed/transactions
         var toBeSignedId = UUID.randomUUID();
         var transaction = send(
-                POST("/seal/to-be-signed/transactions",
-                        new SealToBeSignedTransactionRequest(
-                                sealId,
+                POST("/sign/to-be-signed/transactions",
+                        new SignatureToBeSignedTransactionRequest(
+                                userId,
                                 new SignatureParameter(SignatureNiveau.QUALIFIED, SignatureLevel.B_LT, HashAlgorithm.SHA_256),
+                                // when redirectAfterPageVisitUrl is omitted, a fallback website is presented after the user's acknowledgment at the provider page
+                                null,
                                 List.of(new ToBeSigned(toBeSignedId, dtbs.getBytes(), "sample.pdf"))))
                         .header("provider", provider.toString())
                         .header("Authorization", accessToken.toAuthorizationHeader()),
-                ToBeSignedSealTransaction.class);
+                ToBeSignedSignTransaction.class);
+
+        System.out.println("the pending transaction has state = " + transaction.state());
+
+        // the 2FA the user must perform depends on the provider...
+        // ...either by TAN
+        if (transaction.state() == ToBeSignedSignTransaction.State.TAN_REQUIRED) {
+            System.out.println("TAN has been send to = " + transaction.tanSendTo());
+            var tan = prompt("Enter TAN:");
+
+            // PUT /sign/to-be-signed/transactions/{id}/2fa
+            send(PUT("/sign/to-be-signed/transactions/%s/2fa".formatted(transaction.id()),
+                    new TanAuthorizeRequest(tan))
+                    .header("provider", provider.toString())
+                    .header("Authorization", accessToken.toAuthorizationHeader()));
+        }
+
+        // ...or by page visit
+        if (transaction.state() == ToBeSignedSignTransaction.State.PAGE_VISIT_REQUIRED) {
+            System.out.println("The user must now acknowledgment the transaction by page visit to = " + transaction.pageVisitUrl());
+            prompt("Press any key when page visit has been completed " +
+                    "and the 'return to your application' website has been presented.");
+        }
+
+        // GET /sign/to-be-signed/transactions/{id}
+        transaction = send(
+                GET("/sign/to-be-signed/transactions/%s".formatted(transaction.id()))
+                        .header("provider", provider.toString())
+                        .header("Authorization", accessToken.toAuthorizationHeader()),
+                ToBeSignedSignTransaction.class);
+
+        if (transaction.state() == ToBeSignedSignTransaction.State.FINISHED) {
+            System.out.println("Transaction transitioned after 2FA into FINISHED state.");
+        } else {
+            System.err.println("Transaction did not transition into FINISHED state.");
+            return;
+        }
 
         var signatureValueWithTimestamp = transaction.results().values().stream()
                 .filter(v -> v.id().equals(toBeSignedId)).findFirst().orElseThrow();
@@ -100,8 +142,8 @@ public class SealToBeSignedExample extends AbstractExample {
 
         var signedDocument = padesWithExternalCMSService.signDocument(unsignedDocument, signatureParameter, cmsSignedData);
 
-        writeToDisk(signedDocument, "sample_sealed.pdf");
-        System.out.println("sample.pdf is now sealed and written to disk as sample_sealed.pdf");
+        writeToDisk(signedDocument, "sample_signed.pdf");
+        System.out.println("sample.pdf is now signed and written to disk as sample_signed.pdf");
     }
 
     private static PAdESSignatureParameters signatureParameter(Provider provider, byte[] signingCertificate) throws Exception {
