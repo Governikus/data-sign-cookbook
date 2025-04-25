@@ -1,0 +1,8 @@
+url=https://api.your-datasign.test/
+keycloak.issuerUri=https://your-keycloak/realms/your-realm
+keycloak.clientId=your-client-id
+keycloak.clientSecret=your client secret
+#example.provider=BV
+#example.provider=DTRUST
+example.provider=
+example.sealId=

@@ -1,0 +1,4 @@
+target/
+.idea
+cookbook.properties
+*_signed.pdf
