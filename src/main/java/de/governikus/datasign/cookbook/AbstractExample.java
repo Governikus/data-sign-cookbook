@@ -106,6 +106,12 @@ class AbstractExample {
         out.close();
     }
 
+    protected static void writeToDisk(byte[] bytes, String filename) throws Exception {
+        var out = new FileOutputStream(filename);
+        out.write(bytes);
+        out.close();
+    }
+
     protected static X509Certificate toX509Certificate(byte[] certificate) throws Exception {
         var factory = CertificateFactory.getInstance("X.509");
         return (X509Certificate) factory.generateCertificate(new ByteArrayInputStream(certificate));
