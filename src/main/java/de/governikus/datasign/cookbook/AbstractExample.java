@@ -68,6 +68,7 @@ class AbstractExample {
                 HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
 
         if (httpResponse.statusCode() >= 400) {
+            System.err.printf("response has status code %s and body: %s", httpResponse.statusCode(), httpResponse.body());
             throw new RuntimeException();
         }
 
@@ -80,6 +81,7 @@ class AbstractExample {
                 HttpResponse.BodyHandlers.ofByteArray());
 
         if (httpResponse.statusCode() >= 400) {
+            System.err.printf("response has status code %s and body: %s", httpResponse.statusCode(), httpResponse.body());
             throw new RuntimeException();
         }
 
