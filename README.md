@@ -6,6 +6,10 @@ The *DATA Sign Integration Guide* is - next to this repository - a good starting
 to familiarize themselves with the DATA Sign *REST API*. The Integration Guide can be accessed from the Governikus
 Portal.
 
+The repository contains examples for electronic signatures using PAdES and CAdES. The examples in the
+`pades/` folder demonstrate signing PDF documents. The examples in the `cades/` folder cover singing various file
+types (e.g., .docx, .xls, .zip, .png) with separately stored signature files.
+
 The examples here are plain Java code and demonstrate the REST API usage. The examples are implemented
 with the following simplifications:
 
