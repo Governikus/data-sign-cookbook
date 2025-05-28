@@ -3,3 +3,5 @@ target/
 cookbook.properties
 *_signed.pdf
 *_sealed.pdf
+*_signed.docx.p7s
+*_sealed.docx.p7s

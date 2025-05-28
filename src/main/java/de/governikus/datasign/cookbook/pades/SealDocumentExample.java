@@ -1,5 +1,6 @@
-package de.governikus.datasign.cookbook;
+package de.governikus.datasign.cookbook.pades;
 
+import de.governikus.datasign.cookbook.AbstractExample;
 import de.governikus.datasign.cookbook.types.HashAlgorithm;
 import de.governikus.datasign.cookbook.types.Provider;
 import de.governikus.datasign.cookbook.types.SignatureLevel;
