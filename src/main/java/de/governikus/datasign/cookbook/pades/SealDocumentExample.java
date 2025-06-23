@@ -1,10 +1,7 @@
 package de.governikus.datasign.cookbook.pades;
 
 import de.governikus.datasign.cookbook.AbstractExample;
-import de.governikus.datasign.cookbook.types.HashAlgorithm;
-import de.governikus.datasign.cookbook.types.Provider;
-import de.governikus.datasign.cookbook.types.SignatureLevel;
-import de.governikus.datasign.cookbook.types.SignatureNiveau;
+import de.governikus.datasign.cookbook.types.*;
 import de.governikus.datasign.cookbook.types.request.*;
 import de.governikus.datasign.cookbook.types.response.*;
 
@@ -54,11 +51,10 @@ public class SealDocumentExample extends AbstractExample {
                 POST("/seal/document/transactions",
                         new SealDocumentTransactionRequest(
                                 sealId,
-                                new SignatureParameter(SignatureNiveau.QUALIFIED, SignatureLevel.B_LT, HashAlgorithm.SHA_256),
+                                new DocumentSignatureParameter(SignatureNiveau.QUALIFIED, SignatureLevel.B_LT,
+                                        HashAlgorithm.SHA_256, SignatureFormat.PADES, SignaturePackaging.ENVELOPED),
                                 List.of(new DocumentToBeSigned(uploadedDocument.documentId(),
                                         null,
-                                        DocumentToBeSigned.SignatureFormat.PADES,
-                                        DocumentToBeSigned.SignaturePackaging.ENVELOPED,
                                         new VisualParameter(1,
                                                 new VisualParameter.RelativeCoordinate(0.68f, 0.88f),
                                                 0.3f, 0.1f, null, null)))))
