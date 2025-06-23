@@ -5,10 +5,7 @@ import de.governikus.datasign.cookbook.types.HashAlgorithm;
 import de.governikus.datasign.cookbook.types.Provider;
 import de.governikus.datasign.cookbook.types.SignatureLevel;
 import de.governikus.datasign.cookbook.types.SignatureNiveau;
-import de.governikus.datasign.cookbook.types.request.SignatureParameter;
-import de.governikus.datasign.cookbook.types.request.SignatureToBeSignedTransactionRequest;
-import de.governikus.datasign.cookbook.types.request.TanAuthorizeRequest;
-import de.governikus.datasign.cookbook.types.request.ToBeSigned;
+import de.governikus.datasign.cookbook.types.request.*;
 import de.governikus.datasign.cookbook.types.response.Certificate;
 import de.governikus.datasign.cookbook.types.response.ToBeSignedSignTransaction;
 import de.governikus.datasign.cookbook.types.response.UserState;
@@ -87,7 +84,7 @@ public class SignToBeSignedExample extends AbstractExample {
                 POST("/sign/to-be-signed/transactions",
                         new SignatureToBeSignedTransactionRequest(
                                 userId,
-                                new SignatureParameter(SignatureNiveau.QUALIFIED, SignatureLevel.B_LT, HashAlgorithm.SHA_256),
+                                new ToBeSignedSignatureParameter(SignatureNiveau.QUALIFIED, SignatureLevel.B_LT, HashAlgorithm.SHA_256),
                                 // when redirectAfterPageVisitUrl is omitted, a fallback website is presented after the user's acknowledgment at the provider page
                                 null,
                                 List.of(new ToBeSigned(toBeSignedId, dtbs.getBytes(), "sample.pdf"))))

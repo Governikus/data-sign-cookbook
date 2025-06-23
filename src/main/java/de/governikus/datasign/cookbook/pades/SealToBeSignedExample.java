@@ -5,9 +5,10 @@ import de.governikus.datasign.cookbook.types.HashAlgorithm;
 import de.governikus.datasign.cookbook.types.Provider;
 import de.governikus.datasign.cookbook.types.SignatureLevel;
 import de.governikus.datasign.cookbook.types.SignatureNiveau;
-import de.governikus.datasign.cookbook.types.request.SignatureParameter;
+import de.governikus.datasign.cookbook.types.request.DocumentSignatureParameter;
 import de.governikus.datasign.cookbook.types.request.SealToBeSignedTransactionRequest;
 import de.governikus.datasign.cookbook.types.request.ToBeSigned;
+import de.governikus.datasign.cookbook.types.request.ToBeSignedSignatureParameter;
 import de.governikus.datasign.cookbook.types.response.AvailableSeals;
 import de.governikus.datasign.cookbook.types.response.Certificate;
 import de.governikus.datasign.cookbook.types.response.ToBeSignedSealTransaction;
@@ -81,7 +82,7 @@ public class SealToBeSignedExample extends AbstractExample {
                 POST("/seal/to-be-signed/transactions",
                         new SealToBeSignedTransactionRequest(
                                 sealId,
-                                new SignatureParameter(SignatureNiveau.QUALIFIED, SignatureLevel.B_LT, HashAlgorithm.SHA_256),
+                                new ToBeSignedSignatureParameter(SignatureNiveau.QUALIFIED, SignatureLevel.B_LT, HashAlgorithm.SHA_256),
                                 List.of(new ToBeSigned(toBeSignedId, dtbs.getBytes(), "sample.pdf"))))
                         .header("provider", provider.toString())
                         .header("Authorization", accessToken.toAuthorizationHeader()),
