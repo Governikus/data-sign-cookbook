@@ -1,5 +1,6 @@
-package de.governikus.datasign.cookbook;
+package de.governikus.datasign.cookbook.cades;
 
+import de.governikus.datasign.cookbook.AbstractExample;
 import de.governikus.datasign.cookbook.types.HashAlgorithm;
 import de.governikus.datasign.cookbook.types.Provider;
 import de.governikus.datasign.cookbook.types.SignatureLevel;
@@ -12,12 +13,17 @@ import de.governikus.datasign.cookbook.types.response.Certificate;
 import de.governikus.datasign.cookbook.types.response.ToBeSignedSignTransaction;
 import de.governikus.datasign.cookbook.types.response.UserState;
 import de.governikus.datasign.cookbook.util.DSSFactory;
+import eu.europa.esig.dss.cades.CAdESSignatureParameters;
 import eu.europa.esig.dss.enumerations.DigestAlgorithm;
 import eu.europa.esig.dss.enumerations.EncryptionAlgorithm;
+import eu.europa.esig.dss.enumerations.SignatureAlgorithm;
+import eu.europa.esig.dss.enumerations.SignaturePackaging;
 import eu.europa.esig.dss.model.InMemoryDocument;
 import eu.europa.esig.dss.model.SignatureValue;
 import eu.europa.esig.dss.model.x509.CertificateToken;
-import eu.europa.esig.dss.pades.PAdESSignatureParameters;
+import eu.europa.esig.dss.spi.DSSUtils;
+import org.bouncycastle.cms.CMSSignedData;
+import org.bouncycastle.tsp.TimeStampToken;
 
 import java.io.FileInputStream;
 import java.net.URLEncoder;
@@ -29,7 +35,7 @@ import java.util.UUID;
 import static de.governikus.datasign.cookbook.util.AccessTokenUtil.retrieveAccessToken;
 
 /**
- * Example for to-be-signed based signing. This is more low level than signing documents.
+ * Example for CAdES to-be-signed based signing. This is more low level than signing documents.
  */
 public class SignToBeSignedExample extends AbstractExample {
 
@@ -69,14 +75,11 @@ public class SignToBeSignedExample extends AbstractExample {
                 Certificate.class);
 
         // calculate the DTBS from the unsigned document
-        var unsignedDocument = new InMemoryDocument(new FileInputStream("sample.pdf"));
+        var unsignedDocument = new InMemoryDocument(new FileInputStream("sample.docx"));
 
-        var padesWithExternalCMSService = DSSFactory.padesWithExternalCMSService();
-        var signatureParameter = signatureParameter(provider, certificate.certificate());
-        var documentDigest = padesWithExternalCMSService.getMessageDigest(unsignedDocument, signatureParameter);
-
-        var externalCMSService = DSSFactory.externalCMSService();
-        var dtbs = externalCMSService.getDataToSign(documentDigest, signatureParameter);
+        var cAdESService = DSSFactory.cAdESService();
+        var signatureParameter = signatureParameters(provider, certificate.certificate());
+        var dtbs = cAdESService.getDataToSign(unsignedDocument, signatureParameter);
 
         // POST /sign/to-be-signed/transactions
         var toBeSignedId = UUID.randomUUID();
@@ -131,33 +134,41 @@ public class SignToBeSignedExample extends AbstractExample {
         var signatureValueWithTimestamp = transaction.results().values().stream()
                 .filter(v -> v.id().equals(toBeSignedId)).findFirst().orElseThrow();
 
-        // use the signature value to incorporate a signature into the unsigned document
-        var cmsSignedData = DSSFactory.externalCMSService(signatureValueWithTimestamp.timestamp())
-                .signMessageDigest(documentDigest, signatureParameter, new SignatureValue(signatureParameter.getSignatureAlgorithm(), signatureValueWithTimestamp.signatureValue()));
+        // use the signature value to generate a detached signature
+        cAdESService.setTspSource(new DSSFactory.OnlyOnceTspSource(new TimeStampToken(new CMSSignedData(signatureValueWithTimestamp.timestamp()))));
+        var signedDocument = cAdESService.signDocument(unsignedDocument, signatureParameter,
+                new SignatureValue(signatureAlgorithm(provider), signatureValueWithTimestamp.signatureValue()));
+        var detachedSignature = DSSUtils.toCMSSignedData(signedDocument).getEncoded();
 
-        if (!padesWithExternalCMSService.isValidCMSSignedData(documentDigest, cmsSignedData)) {
+        try {
+            DSSFactory.signedDocumentValidator(unsignedDocument, signedDocument).validateDocument();
+        } catch (Exception e) {
             System.err.println("signatureValue is not coherent with document digest");
-            return;
         }
 
-        var signedDocument = padesWithExternalCMSService.signDocument(unsignedDocument, signatureParameter, cmsSignedData);
-
-        writeToDisk(signedDocument, "sample_signed.pdf");
-        System.out.println("sample.pdf is now signed and written to disk as sample_signed.pdf");
+        writeToDisk(detachedSignature, "sample_signed.docx.p7s");
+        System.out.println("sample.docx is now signed and the detached signature is written to disk as sample_signed.docx.p7s");
     }
 
-    private static PAdESSignatureParameters signatureParameter(Provider provider, byte[] signingCertificate) throws Exception {
-        var pAdESSignatureParameters = new PAdESSignatureParameters();
-        pAdESSignatureParameters.setSigningCertificate(new CertificateToken(toX509Certificate(signingCertificate)));
+    private static CAdESSignatureParameters signatureParameters(Provider provider, byte[] signingCertificate) throws Exception {
+        var cAdESSignatureParameters = new CAdESSignatureParameters();
+        cAdESSignatureParameters.setSignatureLevel(eu.europa.esig.dss.enumerations.SignatureLevel.CAdES_BASELINE_LT);
+        cAdESSignatureParameters.setSignaturePackaging(SignaturePackaging.DETACHED);
+        cAdESSignatureParameters.setDigestAlgorithm(DigestAlgorithm.SHA256);
+        cAdESSignatureParameters.setSigningCertificate(new CertificateToken(toX509Certificate(signingCertificate)));
         // leave #setEncryptionAlgorithm here after #setSigningCertificate
-        pAdESSignatureParameters.setEncryptionAlgorithm(switch (provider) {
+        cAdESSignatureParameters.setEncryptionAlgorithm(switch (provider) {
             case BV -> EncryptionAlgorithm.RSASSA_PSS;
             case DTRUST -> EncryptionAlgorithm.ECDSA;
         });
-        pAdESSignatureParameters.setDigestAlgorithm(DigestAlgorithm.SHA256);
-        pAdESSignatureParameters.setSignatureLevel(eu.europa.esig.dss.enumerations.SignatureLevel.PAdES_BASELINE_T);
-        pAdESSignatureParameters.setContentSize(14_500);
-        return pAdESSignatureParameters;
+        return cAdESSignatureParameters;
+    }
+
+    private static SignatureAlgorithm signatureAlgorithm(Provider provider) {
+        return switch (provider) {
+            case BV -> SignatureAlgorithm.RSA_SSA_PSS_SHA256_MGF1;
+            case DTRUST -> SignatureAlgorithm.ECDSA_SHA256;
+        };
     }
 
     private String prompt(String toDisplay) {
