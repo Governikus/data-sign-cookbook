@@ -1,9 +1,11 @@
-package de.governikus.datasign.cookbook.pades;
+package de.governikus.datasign.cookbook.cades;
 
 import de.governikus.datasign.cookbook.AbstractExample;
 import de.governikus.datasign.cookbook.types.*;
 import de.governikus.datasign.cookbook.types.request.*;
-import de.governikus.datasign.cookbook.types.response.*;
+import de.governikus.datasign.cookbook.types.response.DocumentSignTransaction;
+import de.governikus.datasign.cookbook.types.response.UploadedDocument;
+import de.governikus.datasign.cookbook.types.response.UserState;
 
 import java.io.FileInputStream;
 import java.net.URLEncoder;
@@ -58,13 +60,10 @@ public class SignDocumentExample extends AbstractExample {
                         new SignatureDocumentTransactionRequest(
                                 userId,
                                 new DocumentSignatureParameter(SignatureNiveau.QUALIFIED, SignatureLevel.B_LT,
-                                        HashAlgorithm.SHA_256, SignatureFormat.PADES, SignaturePackaging.ENVELOPED),
+                                        HashAlgorithm.SHA_256, SignatureFormat.CADES, SignaturePackaging.ENVELOPING),
                                 // when redirectAfterPageVisitUrl is omitted, a fallback website is presented after the user's acknowledgment at the provider page
                                 null,
-                                List.of(new DocumentToBeSigned(uploadedDocument.documentId(),
-                                        null,
-                                        new VisualParameter(1, new VisualParameter.RelativeCoordinate(0.68f, 0.88f),
-                                        0.3f, 0.1f, null, null)))))
+                                List.of(new DocumentToBeSigned(uploadedDocument.documentId(), null, null))))
                         .header("provider", provider.toString())
                         .header("Authorization", accessToken.toAuthorizationHeader()),
                 DocumentSignTransaction.class);
@@ -105,17 +104,16 @@ public class SignDocumentExample extends AbstractExample {
             return;
         }
 
-        var documentRevision = transaction.results().stream().filter(r ->
+        var result = transaction.results().stream().filter(r ->
                 r.documentId().equals(uploadedDocument.documentId())).findFirst().orElseThrow();
 
-        // GET /documents/{documentId}/revisions/{revisionId}
-        var documentRevisionBytes = retrieveBytes(GET(documentRevision.href().toString())
-                .header("Authorization", accessToken.toAuthorizationHeader())
-                .header("Accept", "application/octet-stream"));
+        // GET /documents/{documentId}/signatures/{signatureId}
+        var documentRevisionBytes = retrieveBytes(GET(result.href().toString())
+                .header("Authorization", accessToken.toAuthorizationHeader()));
 
 
-        writeToDisk(documentRevisionBytes, "sample_signed.pdf");
-        System.out.println("sample.pdf is now signed and written to disk as sample_signed.pdf");
+        writeToDisk(documentRevisionBytes, "sample_signed.pdf.p7s");
+        System.out.println("sample.pdf is now signed and the signature is written to disk as sample_signed.pdf.p7s");
     }
 
     private String prompt(String toDisplay) {
