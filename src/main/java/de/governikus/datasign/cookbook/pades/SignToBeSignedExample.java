@@ -5,7 +5,10 @@ import de.governikus.datasign.cookbook.types.HashAlgorithm;
 import de.governikus.datasign.cookbook.types.Provider;
 import de.governikus.datasign.cookbook.types.SignatureLevel;
 import de.governikus.datasign.cookbook.types.SignatureNiveau;
-import de.governikus.datasign.cookbook.types.request.*;
+import de.governikus.datasign.cookbook.types.request.SignatureToBeSignedTransactionRequest;
+import de.governikus.datasign.cookbook.types.request.TanAuthorizeRequest;
+import de.governikus.datasign.cookbook.types.request.ToBeSigned;
+import de.governikus.datasign.cookbook.types.request.ToBeSignedSignatureParameter;
 import de.governikus.datasign.cookbook.types.response.Certificate;
 import de.governikus.datasign.cookbook.types.response.ToBeSignedSignTransaction;
 import de.governikus.datasign.cookbook.types.response.UserState;
@@ -69,12 +72,8 @@ public class SignToBeSignedExample extends AbstractExample {
         // calculate the DTBS from the unsigned document
         var unsignedDocument = new InMemoryDocument(new FileInputStream("sample.pdf"));
 
-        var padesWithExternalCMSService = DSSFactory.padesWithExternalCMSService();
         var signatureParameter = signatureParameter(provider, certificate.certificate());
-        var documentDigest = padesWithExternalCMSService.getMessageDigest(unsignedDocument, signatureParameter);
-
-        var externalCMSService = DSSFactory.externalCMSService();
-        var dtbs = externalCMSService.getDataToSign(documentDigest, signatureParameter);
+        var dtbs = DSSFactory.pAdESService().getDataToSign(unsignedDocument, signatureParameter);
 
         // POST /sign/to-be-signed/transactions
         var toBeSignedId = UUID.randomUUID();
@@ -130,15 +129,19 @@ public class SignToBeSignedExample extends AbstractExample {
                 .filter(v -> v.id().equals(toBeSignedId)).findFirst().orElseThrow();
 
         // use the signature value to incorporate a signature into the unsigned document
-        var cmsSignedData = DSSFactory.externalCMSService(signatureValueWithTimestamp.timestamp())
-                .signMessageDigest(documentDigest, signatureParameter, new SignatureValue(signatureParameter.getSignatureAlgorithm(), signatureValueWithTimestamp.signatureValue()));
+        var signatureValue = new SignatureValue(signatureParameter.getSignatureAlgorithm(), signatureValueWithTimestamp.signatureValue());
+        var signedDocument = DSSFactory.pAdESService(signatureValueWithTimestamp.timestamp())
+                .signDocument(unsignedDocument, signatureParameter, signatureValue);
 
-        if (!padesWithExternalCMSService.isValidCMSSignedData(documentDigest, cmsSignedData)) {
+        if (!DSSFactory.pAdESService().isValidSignatureValue(dtbs, signatureValue, new CertificateToken(toX509Certificate(certificate.certificate())))) {
             System.err.println("signatureValue is not coherent with document digest");
             return;
         }
 
-        var signedDocument = padesWithExternalCMSService.signDocument(unsignedDocument, signatureParameter, cmsSignedData);
+        // extend signature to LT-Level
+        signedDocument = DSSFactory.pAdESExtensionService().incorporateValidationData(signedDocument, null, true);
+
+        DSSFactory.signedDocumentValidator(unsignedDocument, signedDocument).validateDocument();
 
         writeToDisk(signedDocument, "sample_signed.pdf");
         System.out.println("sample.pdf is now signed and written to disk as sample_signed.pdf");

@@ -6,7 +6,6 @@ import de.governikus.datasign.cookbook.types.Provider;
 import de.governikus.datasign.cookbook.types.SignatureLevel;
 import de.governikus.datasign.cookbook.types.SignatureNiveau;
 import de.governikus.datasign.cookbook.types.request.SealToBeSignedTransactionRequest;
-import de.governikus.datasign.cookbook.types.request.DocumentSignatureParameter;
 import de.governikus.datasign.cookbook.types.request.ToBeSigned;
 import de.governikus.datasign.cookbook.types.request.ToBeSignedSignatureParameter;
 import de.governikus.datasign.cookbook.types.response.AvailableSeals;
@@ -14,7 +13,10 @@ import de.governikus.datasign.cookbook.types.response.Certificate;
 import de.governikus.datasign.cookbook.types.response.ToBeSignedSealTransaction;
 import de.governikus.datasign.cookbook.util.DSSFactory;
 import eu.europa.esig.dss.cades.CAdESSignatureParameters;
-import eu.europa.esig.dss.enumerations.*;
+import eu.europa.esig.dss.enumerations.DigestAlgorithm;
+import eu.europa.esig.dss.enumerations.EncryptionAlgorithm;
+import eu.europa.esig.dss.enumerations.SignatureAlgorithm;
+import eu.europa.esig.dss.enumerations.SignaturePackaging;
 import eu.europa.esig.dss.model.InMemoryDocument;
 import eu.europa.esig.dss.model.SignatureValue;
 import eu.europa.esig.dss.model.x509.CertificateToken;
@@ -95,10 +97,11 @@ public class SealToBeSignedExample extends AbstractExample {
                 new SignatureValue(signatureAlgorithm(provider), signatureValueWithTimestamp.signatureValue()));
         var detachedSignature = DSSUtils.toCMSSignedData(signedDocument).getEncoded();
 
-        try {
-            DSSFactory.signedDocumentValidator(unsignedDocument, signedDocument).validateDocument();
-        } catch (Exception e) {
-            System.err.println("signatureValue is not coherent with document digest");
+        // check if the signature is valid
+        var report = DSSFactory.signedDocumentValidator(unsignedDocument, signedDocument).validateDocument().getSimpleReport();
+        var indication = report.getIndication(report.getFirstSignatureId()).name();
+        if (indication.equals("FAILED") || indication.equals("TOTAL_FAILED") || indication.equals("NO_SIGNATURE_FOUND")) {
+            System.err.println("signature is not valid");
         }
 
         writeToDisk(detachedSignature, "sample_sealed.docx.p7s");

@@ -5,9 +5,8 @@ import eu.europa.esig.dss.enumerations.DigestAlgorithm;
 import eu.europa.esig.dss.model.DSSDocument;
 import eu.europa.esig.dss.model.DSSException;
 import eu.europa.esig.dss.model.TimestampBinary;
-import eu.europa.esig.dss.pades.signature.ExternalCMSService;
-import eu.europa.esig.dss.pades.signature.PAdESWithExternalCMSService;
-import eu.europa.esig.dss.pdf.pdfbox.PdfBoxDefaultObjectFactory;
+import eu.europa.esig.dss.pades.signature.PAdESExtensionService;
+import eu.europa.esig.dss.pades.signature.PAdESService;
 import eu.europa.esig.dss.service.ocsp.OnlineOCSPSource;
 import eu.europa.esig.dss.spi.DSSASN1Utils;
 import eu.europa.esig.dss.spi.validation.CertificateVerifier;
@@ -28,21 +27,18 @@ import java.util.Objects;
  */
 public class DSSFactory {
 
-    public static ExternalCMSService externalCMSService() {
-        return new ExternalCMSService(offlineCertificateVerifier());
+    public static PAdESService pAdESService() {
+        return new PAdESService(offlineCertificateVerifier());
     }
 
-    public static ExternalCMSService externalCMSService(byte[] timestamp) throws Exception {
-        var externalCMSService = externalCMSService();
-        externalCMSService.setTspSource(new OnlyOnceTspSource(new TimeStampToken(new CMSSignedData(timestamp))));
-        return externalCMSService;
+    public static PAdESService pAdESService(byte[] timestamp) throws Exception {
+        var pAdESService = pAdESService();
+        pAdESService.setTspSource(new OnlyOnceTspSource(new TimeStampToken(new CMSSignedData(timestamp))));
+        return pAdESService;
     }
 
-    public static PAdESWithExternalCMSService padesWithExternalCMSService() {
-        var padesService = new PAdESWithExternalCMSService();
-        padesService.setPdfObjFactory(new PdfBoxDefaultObjectFactory());
-        padesService.setCertificateVerifier(offlineCertificateVerifier());
-        return padesService;
+    public static PAdESExtensionService pAdESExtensionService() {
+        return new PAdESExtensionService(certificateVerifierForLtv());
     }
 
     public static CAdESService cAdESService() {

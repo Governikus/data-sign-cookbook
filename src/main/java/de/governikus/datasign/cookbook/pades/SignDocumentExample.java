@@ -3,7 +3,11 @@ package de.governikus.datasign.cookbook.pades;
 import de.governikus.datasign.cookbook.AbstractExample;
 import de.governikus.datasign.cookbook.types.*;
 import de.governikus.datasign.cookbook.types.request.*;
-import de.governikus.datasign.cookbook.types.response.*;
+import de.governikus.datasign.cookbook.types.response.DocumentSignTransaction;
+import de.governikus.datasign.cookbook.types.response.UploadedDocument;
+import de.governikus.datasign.cookbook.types.response.UserState;
+import de.governikus.datasign.cookbook.util.DSSFactory;
+import eu.europa.esig.dss.model.InMemoryDocument;
 
 import java.io.FileInputStream;
 import java.net.URLEncoder;
@@ -110,9 +114,15 @@ public class SignDocumentExample extends AbstractExample {
 
         // GET /documents/{documentId}/revisions/{revisionId}
         var documentRevisionBytes = retrieveBytes(GET(documentRevision.href().toString())
-                .header("Authorization", accessToken.toAuthorizationHeader())
-                .header("Accept", "application/octet-stream"));
+                .header("Authorization", accessToken.toAuthorizationHeader()));
 
+        // check if the signature is valid
+        var report = DSSFactory.signedDocumentValidator(new InMemoryDocument(new FileInputStream("sample.pdf")),
+                new InMemoryDocument(documentRevisionBytes)).validateDocument().getSimpleReport();
+        var indication = report.getIndication(report.getFirstSignatureId()).name();
+        if (indication.equals("FAILED") || indication.equals("TOTAL_FAILED") || indication.equals("NO_SIGNATURE_FOUND")) {
+            System.err.println("signature is not valid");
+        }
 
         writeToDisk(documentRevisionBytes, "sample_signed.pdf");
         System.out.println("sample.pdf is now signed and written to disk as sample_signed.pdf");
