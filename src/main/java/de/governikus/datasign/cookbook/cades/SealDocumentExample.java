@@ -2,12 +2,14 @@ package de.governikus.datasign.cookbook.cades;
 
 import de.governikus.datasign.cookbook.AbstractExample;
 import de.governikus.datasign.cookbook.types.*;
+import de.governikus.datasign.cookbook.types.request.DocumentSignatureParameter;
 import de.governikus.datasign.cookbook.types.request.DocumentToBeSigned;
 import de.governikus.datasign.cookbook.types.request.SealDocumentTransactionRequest;
-import de.governikus.datasign.cookbook.types.request.DocumentSignatureParameter;
 import de.governikus.datasign.cookbook.types.response.AvailableSeals;
 import de.governikus.datasign.cookbook.types.response.DocumentSealTransaction;
 import de.governikus.datasign.cookbook.types.response.UploadedDocument;
+import de.governikus.datasign.cookbook.util.DSSFactory;
+import eu.europa.esig.dss.model.InMemoryDocument;
 
 import java.io.FileInputStream;
 import java.util.List;
@@ -68,6 +70,14 @@ public class SealDocumentExample extends AbstractExample {
         // GET /documents/{documentId}/signatures/{signatureId}
         var pkcs7SignatureBytes = retrieveBytes(GET(pkcs7Signatures.href().toString())
                 .header("Authorization", accessToken.toAuthorizationHeader()));
+
+        // check if the signature is valid
+        var report = DSSFactory.signedDocumentValidator(new InMemoryDocument(new FileInputStream("sample.docx")),
+                new InMemoryDocument(pkcs7SignatureBytes)).validateDocument().getSimpleReport();
+        var indication = report.getIndication(report.getFirstSignatureId()).name();
+        if (indication.equals("FAILED") || indication.equals("TOTAL_FAILED") || indication.equals("NO_SIGNATURE_FOUND")) {
+            System.err.println("signature is not valid");
+        }
 
         writeToDisk(pkcs7SignatureBytes, "sample_sealed.docx.p7s");
         System.out.println("sample.pdf is now sealed and the signature is written to disk as sample_sealed.docx.p7s");

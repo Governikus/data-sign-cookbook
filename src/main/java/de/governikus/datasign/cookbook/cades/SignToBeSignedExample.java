@@ -5,7 +5,10 @@ import de.governikus.datasign.cookbook.types.HashAlgorithm;
 import de.governikus.datasign.cookbook.types.Provider;
 import de.governikus.datasign.cookbook.types.SignatureLevel;
 import de.governikus.datasign.cookbook.types.SignatureNiveau;
-import de.governikus.datasign.cookbook.types.request.*;
+import de.governikus.datasign.cookbook.types.request.SignatureToBeSignedTransactionRequest;
+import de.governikus.datasign.cookbook.types.request.TanAuthorizeRequest;
+import de.governikus.datasign.cookbook.types.request.ToBeSigned;
+import de.governikus.datasign.cookbook.types.request.ToBeSignedSignatureParameter;
 import de.governikus.datasign.cookbook.types.response.Certificate;
 import de.governikus.datasign.cookbook.types.response.ToBeSignedSignTransaction;
 import de.governikus.datasign.cookbook.types.response.UserState;
@@ -137,10 +140,11 @@ public class SignToBeSignedExample extends AbstractExample {
                 new SignatureValue(signatureAlgorithm(provider), signatureValueWithTimestamp.signatureValue()));
         var detachedSignature = DSSUtils.toCMSSignedData(signedDocument).getEncoded();
 
-        try {
-            DSSFactory.signedDocumentValidator(unsignedDocument, signedDocument).validateDocument();
-        } catch (Exception e) {
-            System.err.println("signatureValue is not coherent with document digest");
+        // check if the signature is valid
+        var report = DSSFactory.signedDocumentValidator(unsignedDocument, signedDocument).validateDocument().getSimpleReport();
+        var indication = report.getIndication(report.getFirstSignatureId()).name();
+        if (indication.equals("FAILED") || indication.equals("TOTAL_FAILED") || indication.equals("NO_SIGNATURE_FOUND")) {
+            System.err.println("signature is not valid");
         }
 
         writeToDisk(detachedSignature, "sample_signed.docx.p7s");
