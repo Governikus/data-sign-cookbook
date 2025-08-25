@@ -3,13 +3,11 @@ package de.governikus.datasign.cookbook.pades;
 import de.governikus.datasign.cookbook.AbstractExample;
 import de.governikus.datasign.cookbook.types.HashAlgorithm;
 import de.governikus.datasign.cookbook.types.Provider;
-import de.governikus.datasign.cookbook.types.SignatureLevel;
 import de.governikus.datasign.cookbook.types.SignatureNiveau;
-import de.governikus.datasign.cookbook.types.request.SealToBeSignedTransactionRequest;
-import de.governikus.datasign.cookbook.types.request.ToBeSigned;
-import de.governikus.datasign.cookbook.types.request.ToBeSignedSignatureParameter;
+import de.governikus.datasign.cookbook.types.request.*;
 import de.governikus.datasign.cookbook.types.response.AvailableSeals;
 import de.governikus.datasign.cookbook.types.response.Certificate;
+import de.governikus.datasign.cookbook.types.response.Timestamps;
 import de.governikus.datasign.cookbook.types.response.ToBeSignedSealTransaction;
 import de.governikus.datasign.cookbook.util.DSSFactory;
 import eu.europa.esig.dss.enumerations.DigestAlgorithm;
@@ -22,6 +20,7 @@ import eu.europa.esig.dss.pades.PAdESSignatureParameters;
 import java.io.FileInputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.List;
 import java.util.UUID;
 
@@ -43,6 +42,8 @@ public class SealToBeSignedExample extends AbstractExample {
         var accessToken = retrieveAccessToken(props);
 
         var provider = Provider.valueOf(props.getProperty("example.provider"));
+
+        var timestampProvider = props.getProperty("example.timestampProvider");
 
         // GET /seals
         var availableSeals = send(
@@ -76,21 +77,33 @@ public class SealToBeSignedExample extends AbstractExample {
                 POST("/seal/to-be-signed/transactions",
                         new SealToBeSignedTransactionRequest(
                                 sealId,
-                                new ToBeSignedSignatureParameter(SignatureNiveau.QUALIFIED, SignatureLevel.B_LT, HashAlgorithm.SHA_256),
+                                new ToBeSignedSignatureParameter(SignatureNiveau.QUALIFIED, HashAlgorithm.SHA_256),
                                 List.of(new ToBeSigned(toBeSignedId, dtbs.getBytes(), "sample.pdf"))))
                         .header("provider", provider.toString())
                         .header("Authorization", accessToken.toAuthorizationHeader()),
                 ToBeSignedSealTransaction.class);
 
-        var signatureValueWithTimestamp = transaction.results().values().stream()
+        var signatureValue = transaction.results().values().stream()
                 .filter(v -> v.id().equals(toBeSignedId)).findFirst().orElseThrow();
 
-        // use the signature value to incorporate a signature into the unsigned document
-        var signatureValue = new SignatureValue(signatureParameter.getSignatureAlgorithm(), signatureValueWithTimestamp.signatureValue());
-        var signedDocument = DSSFactory.pAdESService(signatureValueWithTimestamp.timestamp())
-                .signDocument(unsignedDocument, signatureParameter, signatureValue);
+        // POST /timestamp
+        var digest = digest(HashAlgorithm.SHA_256, signatureValue.signatureValue());
+        var timestamps = send(
+                POST("/timestamp",
+                        new TimestampRequest(timestampProvider, List.of(new Digest(signatureValue.id(),
+                                HashAlgorithm.SHA_256, digest))))
+                        .header("Authorization", accessToken.toAuthorizationHeader()),
+                Timestamps.class);
 
-        if (!DSSFactory.pAdESService().isValidSignatureValue(dtbs, signatureValue, new CertificateToken(toX509Certificate(certificate.certificate())))) {
+        var timestamp = timestamps.timestamps().stream()
+                .filter(t -> t.id().equals(signatureValue.id())).findFirst().orElseThrow();
+
+        // use the signature value to incorporate a signature into the unsigned document
+        var signature = new SignatureValue(signatureParameter.getSignatureAlgorithm(), signatureValue.signatureValue());
+        var signedDocument = DSSFactory.pAdESService(timestamp.timestampToken())
+                .signDocument(unsignedDocument, signatureParameter, signature);
+
+        if (!DSSFactory.pAdESService().isValidSignatureValue(dtbs, signature, new CertificateToken(toX509Certificate(certificate.certificate())))) {
             System.err.println("signatureValue is not coherent with document digest");
             return;
         }
@@ -116,4 +129,11 @@ public class SealToBeSignedExample extends AbstractExample {
         return pAdESSignatureParameters;
     }
 
+    private static byte[] digest(HashAlgorithm hashAlgorithm, byte[] signatureValue) throws Exception {
+        var hashAlgorithmJavaName = switch (hashAlgorithm) {
+            case SHA_256 -> "SHA-256";
+            case SHA_512 -> "SHA-512";
+        };
+        return MessageDigest.getInstance(hashAlgorithmJavaName).digest(signatureValue);
+    }
 }

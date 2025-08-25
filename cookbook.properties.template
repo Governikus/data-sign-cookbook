@@ -7,3 +7,4 @@ keycloak.clientSecret=your client secret
 example.provider=
 example.userId=
 example.sealId=
+example.timestampProvider=

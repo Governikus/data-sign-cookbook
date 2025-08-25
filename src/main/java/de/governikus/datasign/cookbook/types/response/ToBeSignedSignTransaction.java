@@ -10,7 +10,6 @@ public record ToBeSignedSignTransaction(UUID id, State state, URI pageVisitUrl, 
         FINISHED, TAN_REQUIRED, PAGE_VISIT_REQUIRED,
     }
 
-    public record Results(List<SignatureValueWithTimestamp> values,
-                          ValidationRelatedInformation validationRelatedInformation) {
+    public record Results(List<SignatureValue> values) {
     }
 }

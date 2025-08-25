@@ -31,9 +31,9 @@ public class DSSFactory {
         return new PAdESService(offlineCertificateVerifier());
     }
 
-    public static PAdESService pAdESService(byte[] timestamp) throws Exception {
+    public static PAdESService pAdESService(byte[] timestampToken) throws Exception {
         var pAdESService = pAdESService();
-        pAdESService.setTspSource(new OnlyOnceTspSource(new TimeStampToken(new CMSSignedData(timestamp))));
+        pAdESService.setTspSource(new DataSignTspSource(timestampToken));
         return pAdESService;
     }
 
@@ -69,12 +69,13 @@ public class DSSFactory {
     /**
      * This {@link TSPSource} provides an already existing timestamp, once.
      */
-    public static class OnlyOnceTspSource implements TSPSource {
+    public static class DataSignTspSource implements TSPSource {
 
         private final transient TimestampBinary timestampBinary;
 
-        public OnlyOnceTspSource(TimeStampToken timeStampToken) {
-            Objects.requireNonNull(timeStampToken);
+        public DataSignTspSource(byte[] timestampTokenBytes) throws Exception {
+            Objects.requireNonNull(timestampTokenBytes);
+            var timeStampToken = new TimeStampToken(new CMSSignedData(timestampTokenBytes));
             timestampBinary = new TimestampBinary(DSSASN1Utils.getDEREncoded(timeStampToken));
         }
 
