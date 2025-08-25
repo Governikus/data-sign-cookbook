@@ -14,7 +14,7 @@
         <version.lombok>1.18.38</version.lombok>
         <version.guava>33.4.0-jre</version.guava>
         <version.oauth2-oidc-sdk>11.23.1</version.oauth2-oidc-sdk>
-        <version.dss>6.2</version.dss>
+        <version.dss>6.3</version.dss>
         <version.jackson>2.18.3</version.jackson>
         <version.logback>1.5.18</version.logback>
     </properties>
@@ -79,6 +79,14 @@
         </dependency>
         <dependency>
             <groupId>eu.europa.ec.joinup.sd-dss</groupId>
+            <artifactId>dss-cms-object</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>eu.europa.ec.joinup.sd-dss</groupId>
+            <artifactId>dss-cades</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>eu.europa.ec.joinup.sd-dss</groupId>
             <artifactId>dss-document</artifactId>
         </dependency>
         <dependency>
@@ -96,6 +104,10 @@
         <dependency>
             <groupId>eu.europa.ec.joinup.sd-dss</groupId>
             <artifactId>dss-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>eu.europa.ec.joinup.sd-dss</groupId>
+            <artifactId>dss-policy-jaxb</artifactId>
         </dependency>
         <dependency>
             <groupId>eu.europa.ec.joinup.sd-dss</groupId>
