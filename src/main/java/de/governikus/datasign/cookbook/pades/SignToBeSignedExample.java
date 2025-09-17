@@ -3,10 +3,7 @@ package de.governikus.datasign.cookbook.pades;
 import de.governikus.datasign.cookbook.AbstractExample;
 import de.governikus.datasign.cookbook.types.*;
 import de.governikus.datasign.cookbook.types.request.*;
-import de.governikus.datasign.cookbook.types.response.Certificate;
-import de.governikus.datasign.cookbook.types.response.Timestamps;
-import de.governikus.datasign.cookbook.types.response.ToBeSignedSignTransaction;
-import de.governikus.datasign.cookbook.types.response.UserState;
+import de.governikus.datasign.cookbook.types.response.*;
 import de.governikus.datasign.cookbook.util.DSSFactory;
 import eu.europa.esig.dss.enumerations.DigestAlgorithm;
 import eu.europa.esig.dss.enumerations.EncryptionAlgorithm;
@@ -46,16 +43,16 @@ public class SignToBeSignedExample extends AbstractExample {
 
         var userId = props.getProperty("example.userId");
 
-        // GET /users/{userId}/state
-        var userState = send(
-                GET("/users/%s/state".formatted(URLEncoder.encode(userId, StandardCharsets.UTF_8)))
+        // GET /users/{userId}
+        var user = send(
+                GET("/users/%s".formatted(URLEncoder.encode(userId, StandardCharsets.UTF_8)))
                         .header("provider", provider.toString())
                         .header("Authorization", accessToken.toAuthorizationHeader()),
-                UserState.class);
+                User.class);
 
         // ensure the user's account is ready for signing,
         // otherwise ask the user to visit the DATA Sign web application "Mein Konto" to register an account for the provider
-        if (userState.state() != UserState.State.READY) {
+        if (user.state() != User.State.READY) {
             System.err.println("The user account is not ready for signing. Please visit 'Mein Konto'.");
             return;
         }
