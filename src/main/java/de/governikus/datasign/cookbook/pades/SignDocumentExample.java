@@ -5,6 +5,7 @@ import de.governikus.datasign.cookbook.types.*;
 import de.governikus.datasign.cookbook.types.request.*;
 import de.governikus.datasign.cookbook.types.response.DocumentSignTransaction;
 import de.governikus.datasign.cookbook.types.response.UploadedDocument;
+import de.governikus.datasign.cookbook.types.response.User;
 import de.governikus.datasign.cookbook.types.response.UserState;
 import de.governikus.datasign.cookbook.util.DSSFactory;
 import eu.europa.esig.dss.model.InMemoryDocument;
@@ -36,18 +37,27 @@ public class SignDocumentExample extends AbstractExample {
 
         var userId = props.getProperty("example.userId");
 
-        // GET /users/{userId}/state
-        var userState = send(
-                GET("/users/%s/state".formatted(URLEncoder.encode(userId, StandardCharsets.UTF_8)))
+        // GET /users/{userId}
+        var user = send(
+                GET("/users/%s".formatted(URLEncoder.encode(userId, StandardCharsets.UTF_8)))
                         .header("provider", provider.toString())
                         .header("Authorization", accessToken.toAuthorizationHeader()),
-                UserState.class);
+                User.class);
 
         // ensure the user's account is ready for signing,
         // otherwise ask the user to visit the DATA Sign web application "Mein Konto" to register an account for the provider
-        if (userState.state() != UserState.State.READY) {
+        if (user.state() != User.State.READY) {
             System.err.println("The user account is not ready for signing. Please visit 'Mein Konto'.");
             return;
+        }
+
+        // confirm that the identity information provided to us is up to date.
+        boolean confirmsIdentity = false;
+        if (user.needsRecurringConfirmationOfIdentity()) {
+            printIdentificationDocument(user.identificationDocument());
+            if (prompt("Enter 'y' to confirm identity or cancel transaction:").trim().equals("y")) {
+                confirmsIdentity = true;
+            }
         }
 
         // POST /documents
@@ -65,6 +75,7 @@ public class SignDocumentExample extends AbstractExample {
                                         HashAlgorithm.SHA_256, SignatureFormat.PADES, SignaturePackaging.ENVELOPED),
                                 // when redirectAfterPageVisitUrl is omitted, a fallback website is presented after the user's acknowledgment at the provider page
                                 null,
+                                confirmsIdentity,
                                 List.of(new DocumentToBeSigned(uploadedDocument.documentId(),
                                         null,
                                         new VisualParameter(1, new VisualParameter.RelativeCoordinate(0.68f, 0.88f),
@@ -133,4 +144,11 @@ public class SignDocumentExample extends AbstractExample {
         return new Scanner(System.in).nextLine().trim();
     }
 
+    private void printIdentificationDocument(User.IdentificationDocument identificationDocument) {
+        System.out.println("Please check your identification document");
+        System.out.printf("Name: %s %s %n", identificationDocument.givenName(), identificationDocument.familyName());
+        System.out.printf("Birthdate: %s %n", identificationDocument.birthDate());
+        System.out.printf("Address: %s, %s, %s %n", identificationDocument.addressLine(), identificationDocument.cityLine(), identificationDocument.countryCodeIso2());
+        System.out.printf("Expires on: %s %n", identificationDocument.expiresOn());
+    }
 }
