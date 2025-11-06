@@ -176,6 +176,7 @@ public class SignToBeSignedExample extends AbstractExample {
     private static byte[] digest(HashAlgorithm hashAlgorithm, byte[] signatureValue) throws Exception {
         var hashAlgorithmJavaName = switch (hashAlgorithm) {
             case SHA_256 -> "SHA-256";
+            case SHA_384 -> "SHA-384";
             case SHA_512 -> "SHA-512";
         };
         return MessageDigest.getInstance(hashAlgorithmJavaName).digest(signatureValue);
