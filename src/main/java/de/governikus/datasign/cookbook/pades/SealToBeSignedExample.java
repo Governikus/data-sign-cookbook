@@ -2,7 +2,8 @@ package de.governikus.datasign.cookbook.pades;
 
 import de.governikus.datasign.cookbook.AbstractExample;
 import de.governikus.datasign.cookbook.types.HashAlgorithm;
-import de.governikus.datasign.cookbook.types.Provider;
+import de.governikus.datasign.cookbook.types.SealProvider;
+import de.governikus.datasign.cookbook.types.SignProvider;
 import de.governikus.datasign.cookbook.types.SignatureNiveau;
 import de.governikus.datasign.cookbook.types.request.*;
 import de.governikus.datasign.cookbook.types.response.AvailableSeals;
@@ -41,7 +42,7 @@ public class SealToBeSignedExample extends AbstractExample {
 
         var accessToken = retrieveAccessToken(props);
 
-        var provider = Provider.valueOf(props.getProperty("example.provider"));
+        var provider = SealProvider.valueOf(props.getProperty("example.sealProvider"));
 
         var timestampProvider = props.getProperty("example.timestampProvider");
 
@@ -115,13 +116,14 @@ public class SealToBeSignedExample extends AbstractExample {
         System.out.println("sample.pdf is now sealed and written to disk as sample_sealed.pdf");
     }
 
-    private static PAdESSignatureParameters signatureParameter(Provider provider, byte[] signingCertificate) throws Exception {
+    private static PAdESSignatureParameters signatureParameter(SealProvider provider, byte[] signingCertificate) throws Exception {
         var pAdESSignatureParameters = new PAdESSignatureParameters();
         pAdESSignatureParameters.setSigningCertificate(new CertificateToken(toX509Certificate(signingCertificate)));
         // leave #setEncryptionAlgorithm here after #setSigningCertificate
         pAdESSignatureParameters.setEncryptionAlgorithm(switch (provider) {
             case BV -> EncryptionAlgorithm.RSASSA_PSS;
             case DTRUST -> EncryptionAlgorithm.ECDSA;
+            case SMARTCARDS -> EncryptionAlgorithm.ECDSA;
         });
         pAdESSignatureParameters.setDigestAlgorithm(DigestAlgorithm.SHA256);
         pAdESSignatureParameters.setSignatureLevel(eu.europa.esig.dss.enumerations.SignatureLevel.PAdES_BASELINE_T);

@@ -37,7 +37,7 @@ public class SignToBeSignedExample extends AbstractExample {
 
         var accessToken = retrieveAccessToken(props);
 
-        var provider = Provider.valueOf(props.getProperty("example.provider"));
+        var provider = SignProvider.valueOf(props.getProperty("example.signProvider"));
 
         var timestampProvider = props.getProperty("example.timestampProvider");
 
@@ -154,7 +154,7 @@ public class SignToBeSignedExample extends AbstractExample {
         System.out.println("sample.pdf is now signed and written to disk as sample_signed.pdf");
     }
 
-    private static PAdESSignatureParameters signatureParameter(Provider provider, byte[] signingCertificate) throws Exception {
+    private static PAdESSignatureParameters signatureParameter(SignProvider provider, byte[] signingCertificate) throws Exception {
         var pAdESSignatureParameters = new PAdESSignatureParameters();
         pAdESSignatureParameters.setSigningCertificate(new CertificateToken(toX509Certificate(signingCertificate)));
         // leave #setEncryptionAlgorithm here after #setSigningCertificate
