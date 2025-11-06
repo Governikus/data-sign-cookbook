@@ -14,8 +14,6 @@ import eu.europa.esig.dss.model.InMemoryDocument;
 import eu.europa.esig.dss.model.SignatureValue;
 import eu.europa.esig.dss.model.x509.CertificateToken;
 import eu.europa.esig.dss.spi.DSSUtils;
-import org.bouncycastle.cms.CMSSignedData;
-import org.bouncycastle.tsp.TimeStampToken;
 
 import java.io.FileInputStream;
 import java.net.URLEncoder;
@@ -42,7 +40,7 @@ public class SignToBeSignedExample extends AbstractExample {
 
         var accessToken = retrieveAccessToken(props);
 
-        var provider = Provider.valueOf(props.getProperty("example.provider"));
+        var provider = SignProvider.valueOf(props.getProperty("example.signProvider"));
 
         var timestampProvider = props.getProperty("example.timestampProvider");
 
@@ -158,7 +156,7 @@ public class SignToBeSignedExample extends AbstractExample {
         System.out.println("sample.docx is now signed and the detached signature is written to disk as sample_signed.docx.p7s");
     }
 
-    private static CAdESSignatureParameters signatureParameters(Provider provider, byte[] signingCertificate) throws Exception {
+    private static CAdESSignatureParameters signatureParameters(SignProvider provider, byte[] signingCertificate) throws Exception {
         var cAdESSignatureParameters = new CAdESSignatureParameters();
         cAdESSignatureParameters.setSignatureLevel(eu.europa.esig.dss.enumerations.SignatureLevel.CAdES_BASELINE_LT);
         cAdESSignatureParameters.setSignaturePackaging(SignaturePackaging.DETACHED);
@@ -172,7 +170,7 @@ public class SignToBeSignedExample extends AbstractExample {
         return cAdESSignatureParameters;
     }
 
-    private static SignatureAlgorithm signatureAlgorithm(Provider provider) {
+    private static SignatureAlgorithm signatureAlgorithm(SignProvider provider) {
         return switch (provider) {
             case BV -> SignatureAlgorithm.RSA_SSA_PSS_SHA256_MGF1;
             case DTRUST -> SignatureAlgorithm.ECDSA_SHA256;

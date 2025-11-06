@@ -31,7 +31,7 @@ public class SealDocumentExample extends AbstractExample {
 
         var accessToken = retrieveAccessToken(props);
 
-        var provider = Provider.valueOf(props.getProperty("example.provider"));
+        var provider = SealProvider.valueOf(props.getProperty("example.sealProvider"));
 
         // GET /seals
         var availableSeals = send(
