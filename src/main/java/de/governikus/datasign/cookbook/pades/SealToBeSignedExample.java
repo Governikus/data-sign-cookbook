@@ -1,10 +1,7 @@
 package de.governikus.datasign.cookbook.pades;
 
 import de.governikus.datasign.cookbook.AbstractExample;
-import de.governikus.datasign.cookbook.types.HashAlgorithm;
-import de.governikus.datasign.cookbook.types.SealProvider;
-import de.governikus.datasign.cookbook.types.SignProvider;
-import de.governikus.datasign.cookbook.types.SignatureNiveau;
+import de.governikus.datasign.cookbook.types.*;
 import de.governikus.datasign.cookbook.types.request.*;
 import de.governikus.datasign.cookbook.types.response.AvailableSeals;
 import de.governikus.datasign.cookbook.types.response.Certificate;
@@ -66,10 +63,17 @@ public class SealToBeSignedExample extends AbstractExample {
                         .header("Authorization", accessToken.toAuthorizationHeader()),
                 Certificate.class);
 
+        // Use these to discover which signature algorithms are available and pick one
+        System.out.println("signatureAlgorithms = " + certificate.signatureAlgorithms());
+
+        // here we use the signatureAlgorithm from our cookbook.properties file, make sure the signature algorithm is supported
+        var signatureAlgorithm = de.governikus.datasign.cookbook.types.SignatureAlgorithm.valueOf(props.getProperty("example.signatureAlgorithm"));
+        var hashAlgorithm = hashAlgorithm(signatureAlgorithm);
+
         // calculate the DTBS from the unsigned document
         var unsignedDocument = new InMemoryDocument(new FileInputStream("sample.pdf"));
 
-        var signatureParameter = signatureParameter(provider, certificate.certificate());
+        var signatureParameter = signatureParameter(certificate.certificate(), signatureAlgorithm, hashAlgorithm);
         var dtbs = DSSFactory.pAdESService().getDataToSign(unsignedDocument, signatureParameter);
 
         // POST /seal/to-be-signed/transactions
@@ -78,7 +82,7 @@ public class SealToBeSignedExample extends AbstractExample {
                 POST("/seal/to-be-signed/transactions",
                         new SealToBeSignedTransactionRequest(
                                 sealId,
-                                new ToBeSignedSignatureParameter(SignatureNiveau.QUALIFIED, HashAlgorithm.SHA_256),
+                                new ToBeSignedSignatureParameter(SignatureNiveau.QUALIFIED, hashAlgorithm, signatureAlgorithm),
                                 List.of(new ToBeSigned(toBeSignedId, dtbs.getBytes(), "sample.pdf"))))
                         .header("provider", provider.toString())
                         .header("Authorization", accessToken.toAuthorizationHeader()),
@@ -88,11 +92,11 @@ public class SealToBeSignedExample extends AbstractExample {
                 .filter(v -> v.id().equals(toBeSignedId)).findFirst().orElseThrow();
 
         // POST /timestamp
-        var digest = digest(HashAlgorithm.SHA_256, signatureValue.signatureValue());
+        var digest = digest(hashAlgorithm, signatureValue.signatureValue());
         var timestamps = send(
                 POST("/timestamp",
                         new TimestampRequest(timestampProvider, List.of(new Digest(signatureValue.id(),
-                                HashAlgorithm.SHA_256, digest))))
+                                hashAlgorithm, digest))))
                         .header("Authorization", accessToken.toAuthorizationHeader()),
                 Timestamps.class);
 
@@ -116,19 +120,31 @@ public class SealToBeSignedExample extends AbstractExample {
         System.out.println("sample.pdf is now sealed and written to disk as sample_sealed.pdf");
     }
 
-    private static PAdESSignatureParameters signatureParameter(SealProvider provider, byte[] signingCertificate) throws Exception {
+    private static PAdESSignatureParameters signatureParameter(byte[] signingCertificate, SignatureAlgorithm signatureAlgorithm, HashAlgorithm hashAlgorithm) throws Exception {
         var pAdESSignatureParameters = new PAdESSignatureParameters();
         pAdESSignatureParameters.setSigningCertificate(new CertificateToken(toX509Certificate(signingCertificate)));
         // leave #setEncryptionAlgorithm here after #setSigningCertificate
-        pAdESSignatureParameters.setEncryptionAlgorithm(switch (provider) {
-            case BV -> EncryptionAlgorithm.RSASSA_PSS;
-            case DTRUST -> EncryptionAlgorithm.ECDSA;
-            case SMARTCARDS -> EncryptionAlgorithm.ECDSA;
+        pAdESSignatureParameters.setEncryptionAlgorithm(switch (signatureAlgorithm) {
+            case RSA_SHA256, RSA_SHA384, RSA_SHA512, RSA_WITH_MGF1_SHA256, RSA_WITH_MGF1_SHA384, RSA_WITH_MGF1_SHA512-> EncryptionAlgorithm.RSASSA_PSS;
+            case ECDSA_SHA256, ECDSA_SHA384, ECDSA_SHA512 -> EncryptionAlgorithm.ECDSA;
+            case PLAIN_ECDSA_SHA256, PLAIN_ECDSA_SHA384, PLAIN_ECDSA_SHA512 -> EncryptionAlgorithm.PLAIN_ECDSA;
         });
-        pAdESSignatureParameters.setDigestAlgorithm(DigestAlgorithm.SHA256);
+        pAdESSignatureParameters.setDigestAlgorithm(switch (hashAlgorithm) {
+            case SHA_256 -> DigestAlgorithm.SHA256;
+            case SHA_384 -> DigestAlgorithm.SHA384;
+            case SHA_512 -> DigestAlgorithm.SHA512;
+        });
         pAdESSignatureParameters.setSignatureLevel(eu.europa.esig.dss.enumerations.SignatureLevel.PAdES_BASELINE_T);
         pAdESSignatureParameters.setContentSize(14_500);
         return pAdESSignatureParameters;
+    }
+
+    private static HashAlgorithm hashAlgorithm(SignatureAlgorithm signatureAlgorithm) {
+        return switch (signatureAlgorithm) {
+            case RSA_SHA256, RSA_WITH_MGF1_SHA256, ECDSA_SHA256, PLAIN_ECDSA_SHA256 -> HashAlgorithm.SHA_256;
+            case RSA_SHA384, RSA_WITH_MGF1_SHA384, ECDSA_SHA384, PLAIN_ECDSA_SHA384 -> HashAlgorithm.SHA_384;
+            case RSA_SHA512, RSA_WITH_MGF1_SHA512, ECDSA_SHA512, PLAIN_ECDSA_SHA512 -> HashAlgorithm.SHA_512;
+        };
     }
 
     private static byte[] digest(HashAlgorithm hashAlgorithm, byte[] signatureValue) throws Exception {
