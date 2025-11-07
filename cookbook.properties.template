@@ -7,3 +7,4 @@ example.sealProvider=
 example.userId=
 example.sealId=
 example.timestampProvider=
+example.signatureAlgorithm=

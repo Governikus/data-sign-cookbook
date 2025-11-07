@@ -34,6 +34,8 @@ public class SealDocumentExample extends AbstractExample {
 
         var provider = SealProvider.valueOf(props.getProperty("example.sealProvider"));
 
+        var timestampProvider = props.getProperty("example.timestampProvider");
+
         // GET /seals
         var availableSeals = send(
                 GET("/seals")
@@ -64,7 +66,8 @@ public class SealDocumentExample extends AbstractExample {
                                         null,
                                         new VisualParameter(1,
                                                 new VisualParameter.RelativeCoordinate(0.68f, 0.88f),
-                                                0.3f, 0.1f, null, null)))))
+                                                0.3f, 0.1f, null, null))),
+                                timestampProvider))
                         .header("provider", provider.toString())
                         .header("Authorization", accessToken.toAuthorizationHeader()),
                 DocumentSealTransaction.class);
