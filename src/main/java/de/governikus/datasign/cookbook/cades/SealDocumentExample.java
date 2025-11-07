@@ -33,6 +33,8 @@ public class SealDocumentExample extends AbstractExample {
 
         var provider = SealProvider.valueOf(props.getProperty("example.sealProvider"));
 
+        var timestampProvider = props.getProperty("example.timestampProvider");
+
         // GET /seals
         var availableSeals = send(
                 GET("/seals")
@@ -59,7 +61,8 @@ public class SealDocumentExample extends AbstractExample {
                                 sealId,
                                 new DocumentSignatureParameter(SignatureNiveau.QUALIFIED, SignatureLevel.B_LT,
                                         HashAlgorithm.SHA_256, SignatureFormat.CADES, SignaturePackaging.ENVELOPING),
-                                List.of(new DocumentToBeSigned(uploadedDocument.documentId(), null, null))))
+                                List.of(new DocumentToBeSigned(uploadedDocument.documentId(), null, null)),
+                                timestampProvider))
                         .header("provider", provider.toString())
                         .header("Authorization", accessToken.toAuthorizationHeader()),
                 DocumentSealTransaction.class);
