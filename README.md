@@ -32,18 +32,18 @@ Union [Digital Signature Service library](https://ec.europa.eu/digital-building-
 * For Sealing examples a server-side configured test seal from one of the supported providers
 * A configured `cookbook.properties` file (copy it from `cookbook.properties.template`), see the table below
 
-| cookbook.properties key    | Description                                                                                                                                                                                |
-|----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| url                        | API url, e.g. `https://api.your-datasign.test/`                                                                                                                                            |
-| keycloak.issuerUri         | The Keycloak realm url, same as server-side configured, e.g. `https://your-keycloak/realms/your-realm`                                                                                     |
-| keycloak.clientId          | The Keycloak Client ID                                                                                                                                                                     |
-| keycloak.clientSecret      | The Keycloak Client Secret                                                                                                                                                                 |
-| example.signProvider       | Your chosen provider, e.g. "Bank-Verlag" `BV` or "D-Trust" `DTRUST`                                                                                                                        |
-| example.sealProvider       | Your chosen provider, e.g. "Bank-Verlag" `BV`, "D-Trust" `DTRUST` or "Smartcards" `SMARTCARDS`                                                                                             |
-| example.userId             | ID (e-mail address) of a registered and identified user account of your chosen provider. Only required for signing examples.                                                               |
-| example.sealId             | A server-side configured seal of your chosen provider. Only required for sealing examples.                                                                                                 |
-| example.timestampProvider  | Your chosen timestamp provider, e.g. "Bank-Verlag" `BV`, "D-Trust" `DTRUST`, "Telesec" `TELESEC`. "Utimaco" `UTIMACO` or selfsigned `SELFSIGNED`. Only required for to be signed examples. |
-| example.signatureAlgorithm | Signature Algorithm to be used to generate the signature. Only required for to be signed examples.                                                                                         |
+| cookbook.properties key    | Description                                                                                                                                                                                                    |
+|----------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| url                        | API url, e.g. `https://api.your-datasign.test/`                                                                                                                                                                |
+| keycloak.issuerUri         | The Keycloak realm url, same as server-side configured, e.g. `https://your-keycloak/realms/your-realm`                                                                                                         |
+| keycloak.clientId          | The Keycloak Client ID                                                                                                                                                                                         |
+| keycloak.clientSecret      | The Keycloak Client Secret                                                                                                                                                                                     |
+| example.signProvider       | Your chosen provider, e.g. "Bank-Verlag" `BV` or "D-Trust" `DTRUST`                                                                                                                                            |
+| example.sealProvider       | Your chosen provider, e.g. "A-Trust" `ATRUST`, "Bank-Verlag" `BV`, "D-Trust" `DTRUST` or "Smartcards" `SMARTCARDS`                                                                                             |
+| example.userId             | ID (e-mail address) of a registered and identified user account of your chosen provider. Only required for signing examples.                                                                                   |
+| example.sealId             | A server-side configured seal of your chosen provider. Only required for sealing examples.                                                                                                                     |
+| example.timestampProvider  | Your chosen timestamp provider, e.g. "A-Trust" `ATRUST`, "Bank-Verlag" `BV`, "D-Trust" `DTRUST`, "Telesec" `TELESEC`. "Utimaco" `UTIMACO` or selfsigned `SELFSIGNED`. Only required for to be signed examples. |
+| example.signatureAlgorithm | Signature Algorithm to be used to generate the signature. Only required for to be signed examples.                                                                                                             |
 
 ## Run the examples
 
