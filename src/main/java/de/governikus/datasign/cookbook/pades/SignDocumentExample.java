@@ -6,7 +6,6 @@ import de.governikus.datasign.cookbook.types.request.*;
 import de.governikus.datasign.cookbook.types.response.DocumentSignTransaction;
 import de.governikus.datasign.cookbook.types.response.UploadedDocument;
 import de.governikus.datasign.cookbook.types.response.User;
-import de.governikus.datasign.cookbook.types.response.UserState;
 import de.governikus.datasign.cookbook.util.DSSFactory;
 import eu.europa.esig.dss.model.InMemoryDocument;
 
@@ -33,7 +32,7 @@ public class SignDocumentExample extends AbstractExample {
 
         var accessToken = retrieveAccessToken(props);
 
-        var provider = Provider.valueOf(props.getProperty("example.provider"));
+        var provider = SignProvider.valueOf(props.getProperty("example.signProvider"));
 
         var userId = props.getProperty("example.userId");
 
