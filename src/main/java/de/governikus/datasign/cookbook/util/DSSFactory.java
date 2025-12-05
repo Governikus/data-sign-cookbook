@@ -7,6 +7,7 @@ import eu.europa.esig.dss.model.DSSException;
 import eu.europa.esig.dss.model.TimestampBinary;
 import eu.europa.esig.dss.pades.signature.PAdESExtensionService;
 import eu.europa.esig.dss.pades.signature.PAdESService;
+import eu.europa.esig.dss.pades.signature.PAdESWithExternalCMSService;
 import eu.europa.esig.dss.service.crl.OnlineCRLSource;
 import eu.europa.esig.dss.service.ocsp.OnlineOCSPSource;
 import eu.europa.esig.dss.spi.DSSASN1Utils;
@@ -36,6 +37,12 @@ public class DSSFactory {
         var pAdESService = pAdESService();
         pAdESService.setTspSource(new DataSignTspSource(timestampToken));
         return pAdESService;
+    }
+
+    public static PAdESWithExternalCMSService pAdESWithExternalCMSService() {
+        var pAdESWithExternalCMSService = new PAdESWithExternalCMSService();
+        pAdESWithExternalCMSService.setCertificateVerifier(offlineCertificateVerifier());
+        return pAdESWithExternalCMSService;
     }
 
     public static PAdESExtensionService pAdESExtensionService() {

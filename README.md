@@ -17,7 +17,7 @@ with the following simplifications:
   specification can be access from the Governikus Portal)
 * most error handling is omitted
 
-For our to-be-signed based endpoints your application must perform low level signature operations (e.g. calculating the
+For our to-be-signed and document hash based endpoints your application must perform low level signature operations (e.g. calculating the
 DTBS).
 For this purpose our examples make use of the European
 Union [Digital Signature Service library](https://ec.europa.eu/digital-building-blocks/sites/display/DIGITAL/Digital+Signature+Service+-++DSS).
