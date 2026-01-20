@@ -30,9 +30,18 @@ public class SignDocumentExample extends AbstractExample {
         props.load(new FileInputStream("cookbook.properties"));
         System.out.println("Running example with properties = " + props.getProperty("url"));
 
+        var provider = SignProvider.valueOf(props.getProperty("example.signProvider"));
+        switch (provider) {
+            case BV -> runBankVerlagExample();
+            case DTRUST -> runDTrustExample();
+            case STORED_KEYS -> runStoredKeysExample();
+        }
+    }
+
+    public void runBankVerlagExample() throws Exception {
         var accessToken = retrieveAccessToken(props);
 
-        var provider = SignProvider.valueOf(props.getProperty("example.signProvider"));
+        var provider = SignProvider.BV;
 
         var userId = props.getProperty("example.userId");
 
@@ -70,23 +79,23 @@ public class SignDocumentExample extends AbstractExample {
                 POST("/sign/document/transactions",
                         new SignatureDocumentTransactionRequest(
                                 userId,
+                                null,
                                 new DocumentSignatureParameter(SignatureNiveau.QUALIFIED, SignatureLevel.B_LT,
                                         HashAlgorithm.SHA_256, SignatureFormat.PADES, SignaturePackaging.ENVELOPED),
-                                // when redirectAfterPageVisitUrl is omitted, a fallback website is presented after the user's acknowledgment at the provider page
                                 null,
                                 confirmsIdentity,
+                                null,
                                 List.of(new DocumentToBeSigned(uploadedDocument.documentId(),
                                         null,
                                         new VisualParameter(1, new VisualParameter.RelativeCoordinate(0.68f, 0.88f),
-                                        0.3f, 0.1f, null, null)))))
+                                                0.3f, 0.1f, null, null)))))
                         .header("provider", provider.toString())
                         .header("Authorization", accessToken.toAuthorizationHeader()),
                 DocumentSignTransaction.class);
 
         System.out.println("the pending transaction has state = " + transaction.state());
 
-        // the 2FA the user must perform depends on the provider...
-        // ...either by TAN
+        // perform 2FA by TAN
         if (transaction.state() == DocumentSignTransaction.State.TAN_REQUIRED) {
             System.out.println("TAN has been send to = " + transaction.tanSendTo());
             var tan = prompt("Enter TAN:");
@@ -98,7 +107,89 @@ public class SignDocumentExample extends AbstractExample {
                     .header("Authorization", accessToken.toAuthorizationHeader()));
         }
 
-        // ...or by page visit
+        // GET /sign/document/transactions/{id}
+        transaction = send(
+                GET("/sign/document/transactions/%s".formatted(transaction.id()))
+                        .header("provider", provider.toString())
+                        .header("Authorization", accessToken.toAuthorizationHeader()),
+                DocumentSignTransaction.class);
+
+        if (transaction.state() == DocumentSignTransaction.State.FINISHED) {
+            System.out.println("Transaction transitioned after 2FA into FINISHED state.");
+        } else {
+            System.err.println("Transaction did not transition into FINISHED state.");
+            return;
+        }
+
+        var documentRevision = transaction.results().stream().filter(r ->
+                r.documentId().equals(uploadedDocument.documentId())).findFirst().orElseThrow();
+
+        // GET /documents/{documentId}/revisions/{revisionId}
+        var documentRevisionBytes = retrieveBytes(GET(documentRevision.href().toString())
+                .header("Authorization", accessToken.toAuthorizationHeader()));
+
+        // check if the signature is valid
+        var report = DSSFactory.signedDocumentValidator(new InMemoryDocument(new FileInputStream("sample.pdf")),
+                new InMemoryDocument(documentRevisionBytes)).validateDocument().getSimpleReport();
+        var indication = report.getIndication(report.getFirstSignatureId()).name();
+        if (indication.equals("FAILED") || indication.equals("TOTAL_FAILED") || indication.equals("NO_SIGNATURE_FOUND")) {
+            System.err.println("signature is not valid");
+        }
+
+        writeToDisk(documentRevisionBytes, "sample_signed.pdf");
+        System.out.println("sample.pdf is now signed and written to disk as sample_signed.pdf");
+    }
+
+    public void runDTrustExample() throws Exception {
+        var accessToken = retrieveAccessToken(props);
+
+        var provider = SignProvider.DTRUST;
+
+        var userId = props.getProperty("example.userId");
+
+        // GET /users/{userId}
+        var user = send(
+                GET("/users/%s".formatted(URLEncoder.encode(userId, StandardCharsets.UTF_8)))
+                        .header("provider", provider.toString())
+                        .header("Authorization", accessToken.toAuthorizationHeader()),
+                User.class);
+
+        // ensure the user's account is ready for signing,
+        // otherwise ask the user to visit the DATA Sign web application "Mein Konto" to register an account for the provider
+        if (user.state() != User.State.READY) {
+            System.err.println("The user account is not ready for signing. Please visit 'Mein Konto'.");
+            return;
+        }
+
+        // POST /documents
+        var uploadedDocument = send(POST("/documents", new FileInputStream("sample.pdf").readAllBytes())
+                        .header("provider", provider.toString())
+                        .header("Authorization", accessToken.toAuthorizationHeader()),
+                UploadedDocument.class);
+
+        // POST /sign/document/transactions
+        var transaction = send(
+                POST("/sign/document/transactions",
+                        new SignatureDocumentTransactionRequest(
+                                userId,
+                                null,
+                                new DocumentSignatureParameter(SignatureNiveau.QUALIFIED, SignatureLevel.B_LT,
+                                        HashAlgorithm.SHA_256, SignatureFormat.PADES, SignaturePackaging.ENVELOPED),
+                                // when redirectAfterPageVisitUrl is omitted, a fallback website is presented after the user's acknowledgment at the provider page
+                                null,
+                                null,
+                                null,
+                                List.of(new DocumentToBeSigned(uploadedDocument.documentId(),
+                                        null,
+                                        new VisualParameter(1, new VisualParameter.RelativeCoordinate(0.68f, 0.88f),
+                                        0.3f, 0.1f, null, null)))))
+                        .header("provider", provider.toString())
+                        .header("Authorization", accessToken.toAuthorizationHeader()),
+                DocumentSignTransaction.class);
+
+        System.out.println("the pending transaction has state = " + transaction.state());
+
+        // perform 2FA by page visit
         if (transaction.state() == DocumentSignTransaction.State.PAGE_VISIT_REQUIRED) {
             System.out.println("The user must now acknowledgment the transaction by page visit to = " + transaction.pageVisitUrl());
             prompt("Press any key when page visit has been completed " +
@@ -118,6 +209,72 @@ public class SignDocumentExample extends AbstractExample {
             System.err.println("Transaction did not transition into FINISHED state.");
             return;
         }
+
+        var documentRevision = transaction.results().stream().filter(r ->
+                r.documentId().equals(uploadedDocument.documentId())).findFirst().orElseThrow();
+
+        // GET /documents/{documentId}/revisions/{revisionId}
+        var documentRevisionBytes = retrieveBytes(GET(documentRevision.href().toString())
+                .header("Authorization", accessToken.toAuthorizationHeader()));
+
+        // check if the signature is valid
+        var report = DSSFactory.signedDocumentValidator(new InMemoryDocument(new FileInputStream("sample.pdf")),
+                new InMemoryDocument(documentRevisionBytes)).validateDocument().getSimpleReport();
+        var indication = report.getIndication(report.getFirstSignatureId()).name();
+        if (indication.equals("FAILED") || indication.equals("TOTAL_FAILED") || indication.equals("NO_SIGNATURE_FOUND")) {
+            System.err.println("signature is not valid");
+        }
+
+        writeToDisk(documentRevisionBytes, "sample_signed.pdf");
+        System.out.println("sample.pdf is now signed and written to disk as sample_signed.pdf");
+    }
+
+    public void runStoredKeysExample() throws Exception {
+        var accessToken = retrieveAccessToken(props);
+
+        var provider = SignProvider.DTRUST;
+        var timestampProvider = props.getProperty("example.timestampProvider");
+
+        var userId = props.getProperty("example.userId");
+
+        // GET /users/{userId}
+        var user = send(
+                GET("/users/%s".formatted(URLEncoder.encode(userId, StandardCharsets.UTF_8)))
+                        .header("provider", provider.toString())
+                        .header("Authorization", accessToken.toAuthorizationHeader()),
+                User.class);
+
+        // ensure the user's account is ready for signing,
+        // otherwise ask the user to visit the DATA Sign web application "Mein Konto" to upload key material
+        if (user.state() != User.State.READY) {
+            System.err.println("The user account is not ready for signing. Please visit 'Mein Konto'.");
+            return;
+        }
+
+        // POST /documents
+        var uploadedDocument = send(POST("/documents", new FileInputStream("sample.pdf").readAllBytes())
+                        .header("provider", provider.toString())
+                        .header("Authorization", accessToken.toAuthorizationHeader()),
+                UploadedDocument.class);
+
+        // POST /sign/document/transactions
+        var transaction = send(
+                POST("/sign/document/transactions",
+                        new SignatureDocumentTransactionRequest(
+                                userId,
+                                null,
+                                new DocumentSignatureParameter(SignatureNiveau.ADVANCED, SignatureLevel.B_LT,
+                                        HashAlgorithm.SHA_256, SignatureFormat.PADES, SignaturePackaging.ENVELOPED),
+                                null,
+                                null,
+                                timestampProvider,
+                                List.of(new DocumentToBeSigned(uploadedDocument.documentId(),
+                                        null,
+                                        new VisualParameter(1, new VisualParameter.RelativeCoordinate(0.68f, 0.88f),
+                                                0.3f, 0.1f, null, null)))))
+                        .header("provider", provider.toString())
+                        .header("Authorization", accessToken.toAuthorizationHeader()),
+                DocumentSignTransaction.class);
 
         var documentRevision = transaction.results().stream().filter(r ->
                 r.documentId().equals(uploadedDocument.documentId())).findFirst().orElseThrow();

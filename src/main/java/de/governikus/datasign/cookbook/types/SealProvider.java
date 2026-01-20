@@ -4,5 +4,6 @@ public enum SealProvider {
     ATRUST,
     BV,
     DTRUST,
-    SMARTCARDS
+    SMARTCARDS,
+    STORED_KEYS
 }

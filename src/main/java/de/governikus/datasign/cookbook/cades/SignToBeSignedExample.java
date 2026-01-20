@@ -37,9 +37,18 @@ public class SignToBeSignedExample extends AbstractExample {
         props.load(new FileInputStream("cookbook.properties"));
         System.out.println("Running example with properties = " + props.getProperty("url"));
 
+        var provider = SignProvider.valueOf(props.getProperty("example.signProvider"));
+        switch (provider) {
+            case BV -> System.out.println("Signing to-be-signed with BV is not supported.");
+            case DTRUST -> runDTrustExample();
+            case STORED_KEYS -> runStoredKeysExample();
+        }
+    }
+
+    public void runDTrustExample() throws Exception {
         var accessToken = retrieveAccessToken(props);
 
-        var provider = SignProvider.valueOf(props.getProperty("example.signProvider"));
+        var provider = SignProvider.DTRUST;
 
         var timestampProvider = props.getProperty("example.timestampProvider");
 
@@ -86,6 +95,7 @@ public class SignToBeSignedExample extends AbstractExample {
                 POST("/sign/to-be-signed/transactions",
                         new SignatureToBeSignedTransactionRequest(
                                 userId,
+                                null,
                                 new ToBeSignedSignatureParameter(SignatureNiveau.QUALIFIED, hashAlgorithm, null),
                                 // when redirectAfterPageVisitUrl is omitted, a fallback website is presented after the user's acknowledgment at the provider page
                                 null,
@@ -96,20 +106,7 @@ public class SignToBeSignedExample extends AbstractExample {
 
         System.out.println("the pending transaction has state = " + transaction.state());
 
-        // the 2FA the user must perform depends on the provider...
-        // ...either by TAN
-        if (transaction.state() == ToBeSignedSignTransaction.State.TAN_REQUIRED) {
-            System.out.println("TAN has been send to = " + transaction.tanSendTo());
-            var tan = prompt("Enter TAN:");
-
-            // PUT /sign/to-be-signed/transactions/{id}/2fa
-            send(PUT("/sign/to-be-signed/transactions/%s/2fa".formatted(transaction.id()),
-                    new TanAuthorizeRequest(tan))
-                    .header("provider", provider.toString())
-                    .header("Authorization", accessToken.toAuthorizationHeader()));
-        }
-
-        // ...or by page visit
+        // perform 2FA by page visit
         if (transaction.state() == ToBeSignedSignTransaction.State.PAGE_VISIT_REQUIRED) {
             System.out.println("The user must now acknowledgment the transaction by page visit to = " + transaction.pageVisitUrl());
             prompt("Press any key when page visit has been completed " +
@@ -162,6 +159,98 @@ public class SignToBeSignedExample extends AbstractExample {
         System.out.println("sample.docx is now signed and the detached signature is written to disk as sample_signed.docx.p7s");
     }
 
+    public void runStoredKeysExample() throws Exception {
+        var accessToken = retrieveAccessToken(props);
+
+        var provider = SignProvider.STORED_KEYS;
+        var timestampProvider = props.getProperty("example.timestampProvider");
+
+        var userId = props.getProperty("example.userId");
+        var certificateId = props.getProperty("example.certificateId");
+
+        // GET /users/{userId}
+        var user = send(
+                GET("/users/%s".formatted(URLEncoder.encode(userId, StandardCharsets.UTF_8)))
+                        .header("provider", provider.toString())
+                        .header("Authorization", accessToken.toAuthorizationHeader()),
+                User.class);
+
+        // ensure the user's account is ready for signing,
+        // otherwise ask the user to visit the DATA Sign web application "Mein Konto" to upload key material
+        if (user.state() != User.State.READY) {
+            System.err.println("The user account is not ready for signing. Please visit 'Mein Konto'.");
+            return;
+        }
+
+        // GET /users/{userId}/certificates/{certificateId}
+        var certificate = send(
+                GET("/users/%s/certificates/%s".formatted(URLEncoder.encode(userId, StandardCharsets.UTF_8), URLEncoder.encode(certificateId, StandardCharsets.UTF_8)))
+                        .header("provider", provider.toString())
+                        .header("Authorization", accessToken.toAuthorizationHeader()),
+                Certificate.class);
+
+        // Use these to discover which signature algorithms are available and pick one
+        System.out.println("signatureAlgorithms = " + certificate.signatureAlgorithms());
+
+        // here we use the signatureAlgorithm from our cookbook.properties file, make sure the signature algorithm is supported
+        var signatureAlgorithm = de.governikus.datasign.cookbook.types.SignatureAlgorithm.valueOf(props.getProperty("example.signatureAlgorithm"));
+        var hashAlgorithm = hashAlgorithm(signatureAlgorithm);
+
+        // calculate the DTBS from the unsigned document
+        var unsignedDocument = new InMemoryDocument(new FileInputStream("sample.docx"));
+
+        var cAdESService = DSSFactory.cAdESService();
+        var signatureParameter = signatureParameters(certificate.certificate(), signatureAlgorithm, hashAlgorithm);
+        var dtbs = cAdESService.getDataToSign(unsignedDocument, signatureParameter);
+
+        // POST /sign/to-be-signed/transactions
+        var toBeSignedId = UUID.randomUUID();
+        var transaction = send(
+                POST("/sign/to-be-signed/transactions",
+                        new SignatureToBeSignedTransactionRequest(
+                                userId,
+                                UUID.fromString(certificateId),
+                                new ToBeSignedSignatureParameter(SignatureNiveau.ADVANCED, hashAlgorithm, signatureAlgorithm),
+                                null,
+                                List.of(new ToBeSigned(toBeSignedId, dtbs.getBytes(), "sample.pdf"))))
+                        .header("provider", provider.toString())
+                        .header("Authorization", accessToken.toAuthorizationHeader()),
+                ToBeSignedSignTransaction.class);
+
+        System.out.println("the pending transaction has state = " + transaction.state());
+
+        var signatureValue = transaction.results().values().stream()
+                .filter(v -> v.id().equals(toBeSignedId)).findFirst().orElseThrow();
+
+        // POST /timestamp
+        var digest = digest(hashAlgorithm, signatureValue.signatureValue());
+        var timestamps = send(
+                POST("/timestamp",
+                        new TimestampRequest(timestampProvider, List.of(new Digest(signatureValue.id(),
+                                hashAlgorithm, digest))))
+                        .header("Authorization", accessToken.toAuthorizationHeader()),
+                Timestamps.class);
+
+        var timestamp = timestamps.timestamps().stream()
+                .filter(t -> t.id().equals(signatureValue.id())).findFirst().orElseThrow();
+
+        // use the signature value and timestamp to generate a detached signature
+        cAdESService.setTspSource(new DSSFactory.DataSignTspSource(timestamp.timestampToken()));
+        var signedDocument = cAdESService.signDocument(unsignedDocument, signatureParameter,
+                new SignatureValue(mapSignatureAlgorithm(signatureAlgorithm), signatureValue.signatureValue()));
+        var detachedSignature = DSSUtils.toCMSSignedData(signedDocument).getEncoded();
+
+        // check if the signature is valid
+        var report = DSSFactory.signedDocumentValidator(unsignedDocument, signedDocument).validateDocument().getSimpleReport();
+        var indication = report.getIndication(report.getFirstSignatureId()).name();
+        if (indication.equals("FAILED") || indication.equals("TOTAL_FAILED") || indication.equals("NO_SIGNATURE_FOUND")) {
+            System.err.println("signature is not valid");
+        }
+
+        writeToDisk(detachedSignature, "sample_signed.docx.p7s");
+        System.out.println("sample.docx is now signed and the detached signature is written to disk as sample_signed.docx.p7s");
+    }
+
     private static CAdESSignatureParameters signatureParameters(byte[] signingCertificate, SignatureAlgorithm signatureAlgorithm, HashAlgorithm hashAlgorithm) throws Exception {
         var cAdESSignatureParameters = new CAdESSignatureParameters();
         cAdESSignatureParameters.setSignatureLevel(eu.europa.esig.dss.enumerations.SignatureLevel.CAdES_BASELINE_LT);
@@ -174,7 +263,8 @@ public class SignToBeSignedExample extends AbstractExample {
         cAdESSignatureParameters.setSigningCertificate(new CertificateToken(toX509Certificate(signingCertificate)));
         // leave #setEncryptionAlgorithm here after #setSigningCertificate
         cAdESSignatureParameters.setEncryptionAlgorithm(switch (signatureAlgorithm) {
-            case RSA_SHA256, RSA_SHA384, RSA_SHA512, RSA_WITH_MGF1_SHA256, RSA_WITH_MGF1_SHA384, RSA_WITH_MGF1_SHA512-> EncryptionAlgorithm.RSASSA_PSS;
+            case RSA_SHA256, RSA_SHA384, RSA_SHA512-> EncryptionAlgorithm.RSA;
+            case RSA_WITH_MGF1_SHA256, RSA_WITH_MGF1_SHA384, RSA_WITH_MGF1_SHA512 -> EncryptionAlgorithm.RSASSA_PSS;
             case ECDSA_SHA256, ECDSA_SHA384, ECDSA_SHA512 -> EncryptionAlgorithm.ECDSA;
             case PLAIN_ECDSA_SHA256, PLAIN_ECDSA_SHA384, PLAIN_ECDSA_SHA512 -> EncryptionAlgorithm.PLAIN_ECDSA;
         });
