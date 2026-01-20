@@ -105,7 +105,7 @@ public class SignDocumentHashExample extends AbstractExample {
             System.out.println("TAN has been send to = " + transaction.tanSendTo());
             var tan = prompt("Enter TAN:");
 
-            // PUT /sign/document/transactions/{id}/2fa
+            // PUT /sign/document-hash/transactions/{id}/2fa
             send(PUT("/sign/document-hash/transactions/%s/2fa".formatted(transaction.id()),
                     new TanAuthorizeRequest(tan))
                     .header("provider", provider.toString())

@@ -98,14 +98,14 @@ public class SignDocumentHashExample extends AbstractExample {
             System.out.println("TAN has been send to = " + transaction.tanSendTo());
             var tan = prompt("Enter TAN:");
 
-            // PUT /sign/document/transactions/{id}/2fa
-            send(PUT("/sign/document/transactions/%s/2fa".formatted(transaction.id()),
+            // PUT /sign/document-hash/transactions/{id}/2fa
+            send(PUT("/sign/document-hash/transactions/%s/2fa".formatted(transaction.id()),
                     new TanAuthorizeRequest(tan))
                     .header("provider", provider.toString())
                     .header("Authorization", accessToken.toAuthorizationHeader()));
         }
 
-        // GET /sign/document/transactions/{id}
+        // GET /sign/document-hash/transactions/{id}
         transaction = send(
                 GET("/sign/document-hash/transactions/%s".formatted(transaction.id()))
                         .header("provider", provider.toString())
@@ -185,7 +185,7 @@ public class SignDocumentHashExample extends AbstractExample {
                     "and the 'return to your application' website has been presented.");
         }
 
-        // GET /sign/document/transactions/{id}
+        // GET /sign/document-hash/transactions/{id}
         transaction = send(
                 GET("/sign/document-hash/transactions/%s".formatted(transaction.id()))
                         .header("provider", provider.toString())
