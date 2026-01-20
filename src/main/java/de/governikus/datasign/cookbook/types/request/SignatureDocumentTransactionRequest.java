@@ -2,9 +2,10 @@ package de.governikus.datasign.cookbook.types.request;
 
 import java.net.URI;
 import java.util.List;
+import java.util.UUID;
 
-public record SignatureDocumentTransactionRequest(String userId, DocumentSignatureParameter signatureParameter,
-                                                  URI redirectAfterPageVisitUrl,
-                                                  Boolean confirmsIdentity,
-                                                  List<DocumentToBeSigned> documents) {
+public record SignatureDocumentTransactionRequest(String userId, UUID certificateId,
+                                                  DocumentSignatureParameter signatureParameter,
+                                                  URI redirectAfterPageVisitUrl, Boolean confirmsIdentity,
+                                                  String timestampProvider, List<DocumentToBeSigned> documents) {
 }

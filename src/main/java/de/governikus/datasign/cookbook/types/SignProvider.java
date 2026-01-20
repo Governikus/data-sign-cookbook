@@ -2,5 +2,6 @@ package de.governikus.datasign.cookbook.types;
 
 public enum SignProvider {
     BV,
-    DTRUST
+    DTRUST,
+    STORED_KEYS
 }

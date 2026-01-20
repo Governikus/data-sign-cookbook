@@ -5,6 +5,7 @@ keycloak.clientSecret=your client secret
 example.signProvider=
 example.sealProvider=
 example.userId=
+example.certificateId=
 example.sealId=
 example.timestampProvider=
 example.signatureAlgorithm=

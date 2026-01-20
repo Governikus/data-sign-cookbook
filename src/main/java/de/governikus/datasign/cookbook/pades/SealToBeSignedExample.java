@@ -125,7 +125,8 @@ public class SealToBeSignedExample extends AbstractExample {
         pAdESSignatureParameters.setSigningCertificate(new CertificateToken(toX509Certificate(signingCertificate)));
         // leave #setEncryptionAlgorithm here after #setSigningCertificate
         pAdESSignatureParameters.setEncryptionAlgorithm(switch (signatureAlgorithm) {
-            case RSA_SHA256, RSA_SHA384, RSA_SHA512, RSA_WITH_MGF1_SHA256, RSA_WITH_MGF1_SHA384, RSA_WITH_MGF1_SHA512-> EncryptionAlgorithm.RSASSA_PSS;
+            case RSA_SHA256, RSA_SHA384, RSA_SHA512 -> EncryptionAlgorithm.RSA;
+            case RSA_WITH_MGF1_SHA256, RSA_WITH_MGF1_SHA384, RSA_WITH_MGF1_SHA512 -> EncryptionAlgorithm.RSASSA_PSS;
             case ECDSA_SHA256, ECDSA_SHA384, ECDSA_SHA512 -> EncryptionAlgorithm.ECDSA;
             case PLAIN_ECDSA_SHA256, PLAIN_ECDSA_SHA384, PLAIN_ECDSA_SHA512 -> EncryptionAlgorithm.PLAIN_ECDSA;
         });

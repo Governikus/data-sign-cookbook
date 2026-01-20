@@ -9,6 +9,7 @@ import eu.europa.esig.dss.pades.signature.PAdESExtensionService;
 import eu.europa.esig.dss.pades.signature.PAdESService;
 import eu.europa.esig.dss.pades.signature.PAdESWithExternalCMSService;
 import eu.europa.esig.dss.service.crl.OnlineCRLSource;
+import eu.europa.esig.dss.service.http.commons.CommonsDataLoader;
 import eu.europa.esig.dss.service.ocsp.OnlineOCSPSource;
 import eu.europa.esig.dss.spi.DSSASN1Utils;
 import eu.europa.esig.dss.spi.validation.CertificateVerifier;
@@ -71,7 +72,7 @@ public class DSSFactory {
         verifier.setCheckRevocationForUntrustedChains(true);
         verifier.setOcspSource(new OnlineOCSPSource());
         verifier.setCrlSource(new OnlineCRLSource());
-        verifier.setAIASource(new DefaultAIASource());
+        verifier.setAIASource(new DefaultAIASource(new CommonsDataLoader()));
         return verifier;
     }
 
