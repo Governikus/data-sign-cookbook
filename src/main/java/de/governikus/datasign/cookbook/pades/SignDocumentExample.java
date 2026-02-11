@@ -232,7 +232,7 @@ public class SignDocumentExample extends AbstractExample {
     public void runStoredKeysExample() throws Exception {
         var accessToken = retrieveAccessToken(props);
 
-        var provider = SignProvider.DTRUST;
+        var provider = SignProvider.STORED_KEYS;
         var timestampProvider = props.getProperty("example.timestampProvider");
 
         var userId = props.getProperty("example.userId");
