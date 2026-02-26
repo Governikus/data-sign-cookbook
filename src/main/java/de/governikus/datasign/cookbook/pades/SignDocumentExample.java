@@ -14,6 +14,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Scanner;
+import java.util.UUID;
 
 import static de.governikus.datasign.cookbook.util.AccessTokenUtil.retrieveAccessToken;
 
@@ -236,6 +237,7 @@ public class SignDocumentExample extends AbstractExample {
         var timestampProvider = props.getProperty("example.timestampProvider");
 
         var userId = props.getProperty("example.userId");
+        var certificateId = props.getProperty("example.certificateId");
 
         // GET /users/{userId}
         var user = send(
@@ -262,7 +264,7 @@ public class SignDocumentExample extends AbstractExample {
                 POST("/sign/document/transactions",
                         new SignatureDocumentTransactionRequest(
                                 userId,
-                                null,
+                                UUID.fromString(certificateId),
                                 new DocumentSignatureParameter(SignatureNiveau.ADVANCED, SignatureLevel.B_LT,
                                         HashAlgorithm.SHA_256, SignatureFormat.PADES, SignaturePackaging.ENVELOPED),
                                 null,
