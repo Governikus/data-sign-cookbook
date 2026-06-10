@@ -37,7 +37,7 @@ public class SignToBeSignedExample extends AbstractExample {
 
         var provider = SignProvider.valueOf(props.getProperty("example.signProvider"));
         switch (provider) {
-            case BV -> System.out.println("Signing to-be-signed with BV is not supported.");
+            case NETCETERA -> System.out.println("Signing to-be-signed with Netcetera is not supported.");
             case DTRUST -> runDTrustExample();
             case STORED_KEYS -> runStoredKeysExample();
         }
