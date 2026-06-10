@@ -33,16 +33,16 @@ public class SignDocumentExample extends AbstractExample {
 
         var provider = SignProvider.valueOf(props.getProperty("example.signProvider"));
         switch (provider) {
-            case BV -> runBankVerlagExample();
+            case NETCETERA -> runNetceteraExample();
             case DTRUST -> runDTrustExample();
             case STORED_KEYS -> runStoredKeysExample();
         }
     }
 
-    public void runBankVerlagExample() throws Exception {
+    public void runNetceteraExample() throws Exception {
         var accessToken = retrieveAccessToken(props);
 
-        var provider = SignProvider.BV;
+        var provider = SignProvider.NETCETERA;
 
         var userId = props.getProperty("example.userId");
 

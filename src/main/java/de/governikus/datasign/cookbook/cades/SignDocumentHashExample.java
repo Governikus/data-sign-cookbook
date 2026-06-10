@@ -4,8 +4,6 @@ import de.governikus.datasign.cookbook.AbstractExample;
 import de.governikus.datasign.cookbook.types.*;
 import de.governikus.datasign.cookbook.types.request.*;
 import de.governikus.datasign.cookbook.types.response.DocumentHashSignTransaction;
-import de.governikus.datasign.cookbook.types.response.DocumentSignTransaction;
-import de.governikus.datasign.cookbook.types.response.UploadedDocument;
 import de.governikus.datasign.cookbook.types.response.User;
 import de.governikus.datasign.cookbook.util.DSSFactory;
 import eu.europa.esig.dss.model.InMemoryDocument;
@@ -35,16 +33,16 @@ public class SignDocumentHashExample extends AbstractExample {
 
         var provider = SignProvider.valueOf(props.getProperty("example.signProvider"));
         switch (provider) {
-            case BV -> runBankVerlagExample();
+            case NETCETERA -> runNetceteraExample();
             case DTRUST -> runDTrustExample();
             case STORED_KEYS -> runStoredKeysExample();
         }
     }
 
-    public void runBankVerlagExample() throws Exception {
+    public void runNetceteraExample() throws Exception {
         var accessToken = retrieveAccessToken(props);
 
-        var provider = SignProvider.BV;
+        var provider = SignProvider.NETCETERA;
 
         var userId = props.getProperty("example.userId");
 
