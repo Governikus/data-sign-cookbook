@@ -1,5 +1,9 @@
 package de.governikus.datasign.cookbook.types.response;
 
+import de.governikus.datasign.cookbook.types.HashAlgorithm;
+import de.governikus.datasign.cookbook.types.SignatureAlgorithm;
+import de.governikus.datasign.cookbook.types.SignatureNiveau;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -12,7 +16,8 @@ public record User(State state, Boolean needsRecurringConfirmationOfIdentity,
 
     }
 
-    public record Certificate(UUID id, String displayName) {
+    public record Certificate(UUID id, String displayName, SignatureNiveau signatureNiveau,
+                              List<HashAlgorithm> hashAlgorithms, List<SignatureAlgorithm> signatureAlgorithms) {
     }
 
     public enum State {
