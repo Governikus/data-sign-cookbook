@@ -5,5 +5,6 @@ public enum SealProvider {
     NETCETERA,
     DTRUST,
     SMARTCARDS,
-    STORED_KEYS
+    STORED_KEYS,
+    SIGN8
 }

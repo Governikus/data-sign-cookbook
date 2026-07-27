@@ -13,6 +13,7 @@ import eu.europa.esig.dss.pades.PAdESSignatureParameters;
 import eu.europa.esig.dss.spi.DSSUtils;
 
 import java.io.FileInputStream;
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -39,6 +40,7 @@ public class SignDocumentHashExample extends AbstractExample {
             case NETCETERA -> runNetceteraExample();
             case DTRUST -> runDTrustExample();
             case STORED_KEYS -> runStoredKeysExample();
+            case SIGN8 ->  runSign8Example();
         }
     }
 
@@ -196,6 +198,84 @@ public class SignDocumentHashExample extends AbstractExample {
             System.out.println("The user must now acknowledgment the transaction by page visit to = " + transaction.pageVisitUrl());
             prompt("Press any key when page visit has been completed " +
                     "and the 'return to your application' website has been presented.");
+        }
+
+        // GET /sign/document-hash/transactions/{id}
+        transaction = send(
+                GET("/sign/document-hash/transactions/%s".formatted(transaction.id()))
+                        .header("provider", provider.toString())
+                        .header("Authorization", accessToken.toAuthorizationHeader()),
+                DocumentHashSignTransaction.class);
+
+        if (transaction.state() == DocumentHashSignTransaction.State.FINISHED) {
+            System.out.println("Transaction transitioned after 2FA into FINISHED state.");
+        } else {
+            System.err.println("Transaction did not transition into FINISHED state.");
+            return;
+        }
+
+        var cmsSignedData = transaction.results().stream()
+                .filter(v -> v.id().equals(documentHashId)).findFirst().orElseThrow();
+
+        // use the cms signed data to incorporate a signature into the unsigned document
+        var cmsSignedDocument = new CMSSignedDocument(DSSUtils.toCMSSignedData(cmsSignedData.cmsSignedData()));
+        var signedDocument = DSSFactory.pAdESWithExternalCMSService().signDocument(unsignedDocument, signatureParameter, cmsSignedDocument);
+
+        // check if the signature is valid
+        var report = DSSFactory.signedDocumentValidator(new InMemoryDocument(new FileInputStream("sample.pdf")),
+                signedDocument).validateDocument().getSimpleReport();
+        var indication = report.getIndication(report.getFirstSignatureId()).name();
+        if (indication.equals("FAILED") || indication.equals("TOTAL_FAILED") || indication.equals("NO_SIGNATURE_FOUND")) {
+            System.err.println("signature is not valid");
+        }
+
+        writeToDisk(signedDocument, "sample_signed.pdf");
+        System.out.println("sample.pdf is now signed and written to disk as sample_signed.pdf");
+    }
+
+    public void runSign8Example() throws Exception {
+        var accessToken = retrieveAccessToken(props);
+
+        var provider = SignProvider.SIGN8;
+
+        var userId = props.getProperty("example.userId");
+
+        // calculate the document hash from the unsigned document
+        var unsignedDocument = new InMemoryDocument(new FileInputStream("sample.pdf"));
+
+        var signatureParameter = signatureParameter(HashAlgorithm.SHA_256);
+        var documentHash = DSSFactory.pAdESWithExternalCMSService().getMessageDigest(unsignedDocument, signatureParameter).getValue();
+
+        // POST /sign/document-hash/transactions
+        var documentHashId = UUID.randomUUID();
+        var transaction = send(
+                POST("/sign/document-hash/transactions",
+                        new SignatureDocumentHashTransactionRequest(
+                                userId,
+                                null,
+                                new DocumentSignatureParameter(SignatureNiveau.QUALIFIED, SignatureLevel.B_LT,
+                                        HashAlgorithm.SHA_256, SignatureFormat.PADES, SignaturePackaging.ENVELOPED),
+                                URI.create("https://www.governikus.de"),
+                                null,
+                                null,
+                                List.of(new DocumentHash(documentHashId,
+                                        documentHash))))
+                        .header("provider", provider.toString())
+                        .header("Authorization", accessToken.toAuthorizationHeader()),
+                DocumentHashSignTransaction.class);
+
+        System.out.println("the pending transaction has state = " + transaction.state());
+
+        // perform 2FA by page visit
+        if (transaction.state() == DocumentHashSignTransaction.State.PAGE_VISIT_REQUIRED) {
+            System.out.println("The user must now acknowledgment the transaction by page visit to = " + transaction.pageVisitUrl());
+            var code = prompt("Enter code:");
+
+            // PUT /sign/document/transactions/{id}/2fa
+            send(PUT("/sign/document/transactions/%s/2fa".formatted(transaction.id()),
+                    new TanAuthorizeRequest(code))
+                    .header("provider", provider.toString())
+                    .header("Authorization", accessToken.toAuthorizationHeader()));
         }
 
         // GET /sign/document-hash/transactions/{id}
