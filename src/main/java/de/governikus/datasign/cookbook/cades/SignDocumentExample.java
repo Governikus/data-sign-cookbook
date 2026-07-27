@@ -13,6 +13,7 @@ import de.governikus.datasign.cookbook.util.DSSFactory;
 import eu.europa.esig.dss.model.InMemoryDocument;
 
 import java.io.FileInputStream;
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -39,6 +40,7 @@ public class SignDocumentExample extends AbstractExample {
             case NETCETERA -> runNetceteraExample();
             case DTRUST -> runDTrustExample();
             case STORED_KEYS -> runStoredKeysExample();
+            case SIGN8 ->  runSign8Example();
         }
     }
 
@@ -192,6 +194,83 @@ public class SignDocumentExample extends AbstractExample {
             System.out.println("The user must now acknowledgment the transaction by page visit to = " + transaction.pageVisitUrl());
             prompt("Press any key when page visit has been completed " +
                     "and the 'return to your application' website has been presented.");
+        }
+
+        // GET /sign/document/transactions/{id}
+        transaction = send(
+                GET("/sign/document/transactions/%s".formatted(transaction.id()))
+                        .header("provider", provider.toString())
+                        .header("Authorization", accessToken.toAuthorizationHeader()),
+                DocumentSignTransaction.class);
+
+        if (transaction.state() == DocumentSignTransaction.State.FINISHED) {
+            System.out.println("Transaction transitioned after 2FA into FINISHED state.");
+        } else {
+            System.err.println("Transaction did not transition into FINISHED state.");
+            return;
+        }
+
+        var result = transaction.results().stream().filter(r ->
+                r.documentId().equals(uploadedDocument.documentId())).findFirst().orElseThrow();
+
+        // GET /documents/{documentId}/signatures/{signatureId}
+        var pkcs7SignatureBytes = retrieveBytes(GET(result.href().toString())
+                .header("Authorization", accessToken.toAuthorizationHeader()));
+
+        // check if the signature is valid
+        var report = DSSFactory.signedDocumentValidator(new InMemoryDocument(new FileInputStream("sample.docx")),
+                new InMemoryDocument(pkcs7SignatureBytes)).validateDocument().getSimpleReport();
+        var indication = report.getIndication(report.getFirstSignatureId()).name();
+        if (indication.equals("FAILED") || indication.equals("TOTAL_FAILED") || indication.equals("NO_SIGNATURE_FOUND")) {
+            System.err.println("signature is not valid");
+        }
+
+        writeToDisk(pkcs7SignatureBytes, "sample_signed.pdf.p7s");
+        System.out.println("sample.pdf is now signed and the signature is written to disk as sample_signed.pdf.p7s");
+    }
+
+    public void runSign8Example() throws Exception {
+        var accessToken = retrieveAccessToken(props);
+
+        var provider = SignProvider.SIGN8;
+
+        var userId = props.getProperty("example.userId");
+
+        // POST /documents
+        var uploadedDocument = send(POST("/documents", new FileInputStream("sample.pdf").readAllBytes())
+                        .header("provider", provider.toString())
+                        .header("Authorization", accessToken.toAuthorizationHeader()),
+                UploadedDocument.class);
+
+        // POST /sign/document/transactions
+        var transaction = send(
+                POST("/sign/document/transactions",
+                        new SignatureDocumentTransactionRequest(
+                                userId,
+                                null,
+                                new DocumentSignatureParameter(SignatureNiveau.QUALIFIED, SignatureLevel.B_LT,
+                                        HashAlgorithm.SHA_256, SignatureFormat.CADES, SignaturePackaging.ENVELOPING),
+                                URI.create("https://www.governikus.de"),
+                                null,
+                                null,
+                                List.of(new DocumentToBeSigned(uploadedDocument.documentId(), null, null))))
+                        .header("provider", provider.toString())
+                        .header("Authorization", accessToken.toAuthorizationHeader()),
+                DocumentSignTransaction.class);
+
+        System.out.println("the pending transaction has state = " + transaction.state());
+
+        // perform 2FA by page visit
+        if (transaction.state() == DocumentSignTransaction.State.PAGE_VISIT_REQUIRED) {
+            System.out.println("The user must now acknowledgment the transaction by page visit to = " + transaction.pageVisitUrl());
+            var code = prompt("Enter code:");
+
+            // PUT /sign/document/transactions/{id}/2fa
+            send(PUT("/sign/document/transactions/%s/2fa".formatted(transaction.id()),
+                    new TanAuthorizeRequest(code))
+                    .header("provider", provider.toString())
+                    .header("Authorization", accessToken.toAuthorizationHeader()));
+
         }
 
         // GET /sign/document/transactions/{id}
