@@ -1,8 +1,7 @@
 package de.governikus.datasign.cookbook;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import eu.europa.esig.dss.model.DSSDocument;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.ByteArrayInputStream;
 import java.io.FileOutputStream;
@@ -42,7 +41,7 @@ public class AbstractExample {
                 .header("Content-Type", "application/json");
     }
 
-    protected HttpRequest.Builder PUT(String restPath, Object body) throws Exception {
+    protected HttpRequest.Builder PUT(String restPath, Object body) {
         return HttpRequest.newBuilder()
                 .PUT(HttpRequest.BodyPublishers.ofString(toJsonString(body)))
                 .uri(URI.create(props.getProperty("url")).resolve(restPath))
@@ -88,18 +87,16 @@ public class AbstractExample {
         return httpResponse;
     }
 
-    protected String toJsonString(Object request) throws Exception {
+    protected String toJsonString(Object request) {
         return createObjectMapper().writeValueAsString(request);
     }
 
-    protected <T> T fromJson(HttpResponse<String> httpResponse, Class<T> responseType) throws Exception {
+    protected <T> T fromJson(HttpResponse<String> httpResponse, Class<T> responseType) {
         return createObjectMapper().readValue(httpResponse.body(), responseType);
     }
 
     private static ObjectMapper createObjectMapper() {
-        var om = new ObjectMapper();
-        om.registerModule(new JavaTimeModule());
-        return om;
+        return new ObjectMapper();
     }
 
     protected static void writeToDisk(DSSDocument bytes, String filename) throws Exception {
