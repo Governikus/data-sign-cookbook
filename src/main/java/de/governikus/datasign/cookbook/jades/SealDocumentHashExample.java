@@ -1,4 +1,4 @@
-package de.governikus.datasign.cookbook.cades;
+package de.governikus.datasign.cookbook.jades;
 
 import de.governikus.datasign.cookbook.AbstractExample;
 import de.governikus.datasign.cookbook.types.HashAlgorithm;
@@ -7,12 +7,14 @@ import de.governikus.datasign.cookbook.types.SignatureFormat;
 import de.governikus.datasign.cookbook.types.SignatureLevel;
 import de.governikus.datasign.cookbook.types.SignatureNiveau;
 import de.governikus.datasign.cookbook.types.SignaturePackaging;
+import de.governikus.datasign.cookbook.types.SignatureSerialization;
 import de.governikus.datasign.cookbook.types.request.DocumentHash;
 import de.governikus.datasign.cookbook.types.request.DocumentSignatureParameter;
 import de.governikus.datasign.cookbook.types.request.SealDocumentHashTransactionRequest;
 import de.governikus.datasign.cookbook.types.response.AvailableSeals;
 import de.governikus.datasign.cookbook.types.response.DocumentHashSealTransaction;
 import de.governikus.datasign.cookbook.util.DSSFactory;
+import eu.europa.esig.dss.jades.DSSJsonUtils;
 import eu.europa.esig.dss.model.InMemoryDocument;
 
 import java.io.FileInputStream;
@@ -39,8 +41,6 @@ public class SealDocumentHashExample extends AbstractExample {
 
         var provider = SealProvider.valueOf(props.getProperty("example.sealProvider"));
 
-        var timestampProvider = props.getProperty("example.timestampProvider");
-
         // GET /seals
         var availableSeals = send(
                 GET("/seals")
@@ -54,8 +54,9 @@ public class SealDocumentHashExample extends AbstractExample {
         // here we use the sealId from our cookbook.properties file, make sure the seal is available
         var sealId = props.getProperty("example.sealId");
 
-        // calculate the document hash from the unsigned document
-        var documentHash = MessageDigest.getInstance("SHA-256").digest(new FileInputStream("sample.docx").readAllBytes());
+        // calculate the document hash from the Base64 URL encoded JSON payload
+        var documentHash = MessageDigest.getInstance("SHA-512").digest(
+                DSSJsonUtils.toBase64Url(new FileInputStream("sample.json").readAllBytes()).getBytes());
 
         // POST /seal/document-hash/transactions
         var documentHashId = UUID.randomUUID();
@@ -63,26 +64,26 @@ public class SealDocumentHashExample extends AbstractExample {
                 POST("/seal/document-hash/transactions",
                         new SealDocumentHashTransactionRequest(
                                 sealId,
-                                new DocumentSignatureParameter(SignatureNiveau.QUALIFIED, SignatureLevel.B_LT,
-                                        HashAlgorithm.SHA_256, SignatureFormat.CADES, SignaturePackaging.DETACHED, null),
-                                List.of(new DocumentHash(documentHashId, documentHash)), timestampProvider))
+                                new DocumentSignatureParameter(SignatureNiveau.QUALIFIED, SignatureLevel.B_B,
+                                        HashAlgorithm.SHA_512, SignatureFormat.JADES, SignaturePackaging.DETACHED, SignatureSerialization.JWS_COMPACT),
+                                List.of(new DocumentHash(documentHashId, documentHash)), null))
                         .header("provider", provider.toString())
                         .header("Authorization", accessToken.toAuthorizationHeader()),
                 DocumentHashSealTransaction.class);
 
-        var cmsSignedData = transaction.results().stream().filter(r ->
+        var signedData = transaction.results().stream().filter(r ->
                 r.id().equals(documentHashId)).findFirst().orElseThrow();
 
         // check if the signature is valid
-        var report = DSSFactory.signedDocumentValidator(new InMemoryDocument(new FileInputStream("sample.docx")),
-                new InMemoryDocument(cmsSignedData.signedData())).validateDocument().getSimpleReport();
+        var report = DSSFactory.signedDocumentValidator(new InMemoryDocument(new FileInputStream("sample.json")),
+                new InMemoryDocument(signedData.signedData())).validateDocument().getSimpleReport();
         var indication = report.getIndication(report.getFirstSignatureId()).name();
         if (indication.equals("FAILED") || indication.equals("TOTAL_FAILED") || indication.equals("NO_SIGNATURE_FOUND")) {
             System.err.println("signature is not valid");
         }
 
-        writeToDisk(cmsSignedData.signedData(), "sample_sealed.docx.p7s");
-        System.out.println("sample.docx is now sealed and the signature is written to disk as sample_sealed.docx.p7s");
+        writeToDisk(signedData.signedData(), "sample_sealed.json.jwt");
+        System.out.println("sample.json is now sealed and the signature is written to disk as sample_sealed.json.jwt");
     }
 
 }

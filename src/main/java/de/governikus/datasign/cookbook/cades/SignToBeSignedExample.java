@@ -1,9 +1,19 @@
 package de.governikus.datasign.cookbook.cades;
 
 import de.governikus.datasign.cookbook.AbstractExample;
-import de.governikus.datasign.cookbook.types.*;
-import de.governikus.datasign.cookbook.types.request.*;
-import de.governikus.datasign.cookbook.types.response.*;
+import de.governikus.datasign.cookbook.types.HashAlgorithm;
+import de.governikus.datasign.cookbook.types.SignProvider;
+import de.governikus.datasign.cookbook.types.SignatureAlgorithm;
+import de.governikus.datasign.cookbook.types.SignatureNiveau;
+import de.governikus.datasign.cookbook.types.request.Digest;
+import de.governikus.datasign.cookbook.types.request.SignatureToBeSignedTransactionRequest;
+import de.governikus.datasign.cookbook.types.request.TimestampRequest;
+import de.governikus.datasign.cookbook.types.request.ToBeSigned;
+import de.governikus.datasign.cookbook.types.request.ToBeSignedSignatureParameter;
+import de.governikus.datasign.cookbook.types.response.Certificate;
+import de.governikus.datasign.cookbook.types.response.Timestamps;
+import de.governikus.datasign.cookbook.types.response.ToBeSignedSignTransaction;
+import de.governikus.datasign.cookbook.types.response.User;
 import de.governikus.datasign.cookbook.util.DSSFactory;
 import eu.europa.esig.dss.cades.CAdESSignatureParameters;
 import eu.europa.esig.dss.enumerations.DigestAlgorithm;
@@ -35,13 +45,14 @@ public class SignToBeSignedExample extends AbstractExample {
 
     public void runExample() throws Exception {
         props.load(new FileInputStream("cookbook.properties"));
-        System.out.println("Running example with properties = " + props.getProperty("url"));
+        System.out.println("Running example with properties = " + props);
 
         var provider = SignProvider.valueOf(props.getProperty("example.signProvider"));
         switch (provider) {
-            case NETCETERA -> System.out.println("Signing to-be-signed with Netcetera is not supported.");
             case DTRUST -> runDTrustExample();
             case STORED_KEYS -> runStoredKeysExample();
+            case NETCETERA -> System.out.println("Signing to-be-signed with Netcetera is not supported.");
+            case SIGN8 -> System.out.println("Signing to-be-signed with SIGN8 is not supported.");
         }
     }
 
@@ -99,7 +110,7 @@ public class SignToBeSignedExample extends AbstractExample {
                                 new ToBeSignedSignatureParameter(SignatureNiveau.QUALIFIED, hashAlgorithm, null),
                                 // when redirectAfterPageVisitUrl is omitted, a fallback website is presented after the user's acknowledgment at the provider page
                                 null,
-                                List.of(new ToBeSigned(toBeSignedId, dtbs.getBytes(), "sample.pdf"))))
+                                List.of(new ToBeSigned(toBeSignedId, dtbs.getBytes(), "sample.docx"))))
                         .header("provider", provider.toString())
                         .header("Authorization", accessToken.toAuthorizationHeader()),
                 ToBeSignedSignTransaction.class);
@@ -166,7 +177,6 @@ public class SignToBeSignedExample extends AbstractExample {
         var timestampProvider = props.getProperty("example.timestampProvider");
 
         var userId = props.getProperty("example.userId");
-        var certificateId = props.getProperty("example.certificateId");
 
         // GET /users/{userId}
         var user = send(
@@ -181,6 +191,12 @@ public class SignToBeSignedExample extends AbstractExample {
             System.err.println("The user account is not ready for signing. Please visit 'Mein Konto'.");
             return;
         }
+
+        // discover which certificates are available to the user
+        System.out.println("user's certificates  = " + user.certificates());
+
+        // here we use the certificate from our cookbook.properties file, make sure it exists
+        var certificateId = props.getProperty("example.certificateId");
 
         // GET /users/{userId}/certificates/{certificateId}
         var certificate = send(

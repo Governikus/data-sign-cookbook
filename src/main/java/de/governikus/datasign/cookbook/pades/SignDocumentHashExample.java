@@ -1,8 +1,16 @@
 package de.governikus.datasign.cookbook.pades;
 
 import de.governikus.datasign.cookbook.AbstractExample;
-import de.governikus.datasign.cookbook.types.*;
-import de.governikus.datasign.cookbook.types.request.*;
+import de.governikus.datasign.cookbook.types.HashAlgorithm;
+import de.governikus.datasign.cookbook.types.SignProvider;
+import de.governikus.datasign.cookbook.types.SignatureFormat;
+import de.governikus.datasign.cookbook.types.SignatureLevel;
+import de.governikus.datasign.cookbook.types.SignatureNiveau;
+import de.governikus.datasign.cookbook.types.SignaturePackaging;
+import de.governikus.datasign.cookbook.types.request.DocumentHash;
+import de.governikus.datasign.cookbook.types.request.DocumentSignatureParameter;
+import de.governikus.datasign.cookbook.types.request.SignatureDocumentHashTransactionRequest;
+import de.governikus.datasign.cookbook.types.request.TanAuthorizeRequest;
 import de.governikus.datasign.cookbook.types.response.DocumentHashSignTransaction;
 import de.governikus.datasign.cookbook.types.response.User;
 import de.governikus.datasign.cookbook.util.DSSFactory;
@@ -33,7 +41,7 @@ public class SignDocumentHashExample extends AbstractExample {
 
     public void runExample() throws Exception {
         props.load(new FileInputStream("cookbook.properties"));
-        System.out.println("Running example with properties = " + props.getProperty("url"));
+        System.out.println("Running example with properties = " + props);
 
         var provider = SignProvider.valueOf(props.getProperty("example.signProvider"));
         switch (provider) {
@@ -88,7 +96,7 @@ public class SignDocumentHashExample extends AbstractExample {
                                 userId,
                                 null,
                                 new DocumentSignatureParameter(SignatureNiveau.QUALIFIED, SignatureLevel.B_LT,
-                                        HashAlgorithm.SHA_256, SignatureFormat.PADES, SignaturePackaging.ENVELOPED),
+                                        HashAlgorithm.SHA_256, SignatureFormat.PADES, SignaturePackaging.ENVELOPED, null),
                                 null,
                                 confirmsIdentity,
                                 null,
@@ -130,7 +138,7 @@ public class SignDocumentHashExample extends AbstractExample {
                 .filter(v -> v.id().equals(documentHashId)).findFirst().orElseThrow();
 
         // use the cms signed data to incorporate a signature into the unsigned document
-        var cmsSignedDocument = new CMSSignedDocument(DSSUtils.toCMSSignedData(cmsSignedData.cmsSignedData()));
+        var cmsSignedDocument = new CMSSignedDocument(DSSUtils.toCMSSignedData(cmsSignedData.signedData()));
         var signedDocument = DSSFactory.pAdESWithExternalCMSService().signDocument(unsignedDocument, signatureParameter, cmsSignedDocument);
 
         // check if the signature is valid
@@ -180,7 +188,7 @@ public class SignDocumentHashExample extends AbstractExample {
                                 userId,
                                 null,
                                 new DocumentSignatureParameter(SignatureNiveau.QUALIFIED, SignatureLevel.B_LT,
-                                        HashAlgorithm.SHA_256, SignatureFormat.PADES, SignaturePackaging.ENVELOPED),
+                                        HashAlgorithm.SHA_256, SignatureFormat.PADES, SignaturePackaging.ENVELOPED, null),
                                 // when redirectAfterPageVisitUrl is omitted, a fallback website is presented after the user's acknowledgment at the provider page
                                 null,
                                 null,
@@ -218,7 +226,7 @@ public class SignDocumentHashExample extends AbstractExample {
                 .filter(v -> v.id().equals(documentHashId)).findFirst().orElseThrow();
 
         // use the cms signed data to incorporate a signature into the unsigned document
-        var cmsSignedDocument = new CMSSignedDocument(DSSUtils.toCMSSignedData(cmsSignedData.cmsSignedData()));
+        var cmsSignedDocument = new CMSSignedDocument(DSSUtils.toCMSSignedData(cmsSignedData.signedData()));
         var signedDocument = DSSFactory.pAdESWithExternalCMSService().signDocument(unsignedDocument, signatureParameter, cmsSignedDocument);
 
         // check if the signature is valid
@@ -254,7 +262,7 @@ public class SignDocumentHashExample extends AbstractExample {
                                 userId,
                                 null,
                                 new DocumentSignatureParameter(SignatureNiveau.QUALIFIED, SignatureLevel.B_LT,
-                                        HashAlgorithm.SHA_256, SignatureFormat.PADES, SignaturePackaging.ENVELOPED),
+                                        HashAlgorithm.SHA_256, SignatureFormat.PADES, SignaturePackaging.ENVELOPED, null),
                                 URI.create("https://www.governikus.de"),
                                 null,
                                 null,
@@ -266,10 +274,10 @@ public class SignDocumentHashExample extends AbstractExample {
 
         System.out.println("the pending transaction has state = " + transaction.state());
 
-        // perform 2FA by page visit
+        // acknowledge the transaction by page visit and retrieve code
         if (transaction.state() == DocumentHashSignTransaction.State.PAGE_VISIT_REQUIRED) {
-            System.out.println("The user must now acknowledgment the transaction by page visit to = " + transaction.pageVisitUrl());
-            var code = prompt("Enter code:");
+            System.out.println("The user must now acknowledge the transaction by page visit to = " + transaction.pageVisitUrl());
+            var code = prompt("Enter the <code> from your browser address bar www.governikus.de/?code=<code>:");
 
             // PUT /sign/document/transactions/{id}/2fa
             send(PUT("/sign/document/transactions/%s/2fa".formatted(transaction.id()),
@@ -286,7 +294,7 @@ public class SignDocumentHashExample extends AbstractExample {
                 DocumentHashSignTransaction.class);
 
         if (transaction.state() == DocumentHashSignTransaction.State.FINISHED) {
-            System.out.println("Transaction transitioned after 2FA into FINISHED state.");
+            System.out.println("Transaction transitioned into FINISHED state.");
         } else {
             System.err.println("Transaction did not transition into FINISHED state.");
             return;
@@ -296,7 +304,7 @@ public class SignDocumentHashExample extends AbstractExample {
                 .filter(v -> v.id().equals(documentHashId)).findFirst().orElseThrow();
 
         // use the cms signed data to incorporate a signature into the unsigned document
-        var cmsSignedDocument = new CMSSignedDocument(DSSUtils.toCMSSignedData(cmsSignedData.cmsSignedData()));
+        var cmsSignedDocument = new CMSSignedDocument(DSSUtils.toCMSSignedData(cmsSignedData.signedData()));
         var signedDocument = DSSFactory.pAdESWithExternalCMSService().signDocument(unsignedDocument, signatureParameter, cmsSignedDocument);
 
         // check if the signature is valid
@@ -318,7 +326,6 @@ public class SignDocumentHashExample extends AbstractExample {
         var timestampProvider = props.getProperty("example.timestampProvider");
 
         var userId = props.getProperty("example.userId");
-        var certificateId = props.getProperty("example.certificateId");
 
         // GET /users/{userId}
         var user = send(
@@ -334,6 +341,12 @@ public class SignDocumentHashExample extends AbstractExample {
             return;
         }
 
+        // discover which certificates are available to the user
+        System.out.println("user's certificates  = " + user.certificates());
+
+        // here we use the certificate from our cookbook.properties file, make sure it exists
+        var certificateId = props.getProperty("example.certificateId");
+
         // calculate the document hash from the unsigned document
         var unsignedDocument = new InMemoryDocument(new FileInputStream("sample.pdf"));
 
@@ -348,7 +361,7 @@ public class SignDocumentHashExample extends AbstractExample {
                                 userId,
                                 UUID.fromString(certificateId),
                                 new DocumentSignatureParameter(SignatureNiveau.ADVANCED, SignatureLevel.B_LT,
-                                        HashAlgorithm.SHA_256, SignatureFormat.PADES, SignaturePackaging.ENVELOPED),
+                                        HashAlgorithm.SHA_256, SignatureFormat.PADES, SignaturePackaging.ENVELOPED, null),
                                 null,
                                 null,
                                 timestampProvider,
@@ -362,7 +375,7 @@ public class SignDocumentHashExample extends AbstractExample {
                 .filter(v -> v.id().equals(documentHashId)).findFirst().orElseThrow();
 
         // use the cms signed data to incorporate a signature into the unsigned document
-        var cmsSignedDocument = new CMSSignedDocument(DSSUtils.toCMSSignedData(cmsSignedData.cmsSignedData()));
+        var cmsSignedDocument = new CMSSignedDocument(DSSUtils.toCMSSignedData(cmsSignedData.signedData()));
         var signedDocument = DSSFactory.pAdESWithExternalCMSService().signDocument(unsignedDocument, signatureParameter, cmsSignedDocument);
 
         // check if the signature is valid
