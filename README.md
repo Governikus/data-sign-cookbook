@@ -6,9 +6,12 @@ The *DATA Sign Integration Guide* is - next to this repository - a good starting
 to familiarize themselves with the DATA Sign *REST API*. The Integration Guide can be accessed from the Governikus
 Portal.
 
-The repository contains examples for electronic signatures using PAdES and CAdES. The examples in the
-`pades/` folder demonstrate signing PDF documents. The examples in the `cades/` folder cover singing various file
-types (e.g., .docx, .xls, .zip, .png) with separately stored signature files.
+The repository contains examples for electronic signatures using PAdES, CAdES and JAdES.
+
+* The examples in the `pades/` folder demonstrate signing PDF documents.
+* The examples in the `cades/` folder cover singing various file types (e.g., .docx, .xls, .zip, .png)
+  with separately stored signature files.
+* The examples in the `jades/` folder cover signing JSON payloads
 
 The examples here are plain Java code and demonstrate the REST API usage. The examples are implemented
 with the following simplifications:
@@ -38,8 +41,8 @@ Union [Digital Signature Service library](https://ec.europa.eu/digital-building-
 | keycloak.issuerUri         | The Keycloak realm url, same as server-side configured, e.g. `https://your-keycloak/realms/your-realm`                                                                                                                    |
 | keycloak.clientId          | The Keycloak Client ID                                                                                                                                                                                                    |
 | keycloak.clientSecret      | The Keycloak Client Secret                                                                                                                                                                                                |
-| example.signProvider       | Your chosen provider, e.g. "G+D Netcetera" `NETCETERA`, "D-Trust" `DTRUST`, "Stored Keys" `STORED_KEYS` or "Sign8" `SIGN8`                                                                                                |
-| example.sealProvider       | Your chosen provider, e.g. "A-Trust" `ATRUST`, "G+D Netcetera" `NETCETERA`, "D-Trust" `DTRUST`, "Smartcards" `SMARTCARDS`, "Stored Keys" `STORED_KEYS` or "Sign8" `SIGN8`                                                                   |
+| example.signProvider       | Your chosen provider, e.g. "G+D Netcetera" `NETCETERA`, "D-Trust" `DTRUST`, "Stored Keys" `STORED_KEYS` or "SIGN8" `SIGN8`                                                                                                |
+| example.sealProvider       | Your chosen provider, e.g. "A-Trust" `ATRUST`, "G+D Netcetera" `NETCETERA`, "D-Trust" `DTRUST`, "Smartcards" `SMARTCARDS`, "Stored Keys" `STORED_KEYS` or "SIGN8" `SIGN8`                                                 |
 | example.userId             | ID (e-mail address) of a registered and identified user account of your chosen provider. Only required for signing examples.                                                                                              |
 | example.certificateId      | Certificate ID of a stored key. Only required when signing with stored keys.                                                                                                                                              |
 | example.sealId             | A server-side configured seal of your chosen provider. Only required for sealing examples.                                                                                                                                |

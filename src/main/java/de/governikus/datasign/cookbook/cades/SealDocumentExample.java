@@ -1,7 +1,12 @@
 package de.governikus.datasign.cookbook.cades;
 
 import de.governikus.datasign.cookbook.AbstractExample;
-import de.governikus.datasign.cookbook.types.*;
+import de.governikus.datasign.cookbook.types.HashAlgorithm;
+import de.governikus.datasign.cookbook.types.SealProvider;
+import de.governikus.datasign.cookbook.types.SignatureFormat;
+import de.governikus.datasign.cookbook.types.SignatureLevel;
+import de.governikus.datasign.cookbook.types.SignatureNiveau;
+import de.governikus.datasign.cookbook.types.SignaturePackaging;
 import de.governikus.datasign.cookbook.types.request.DocumentSignatureParameter;
 import de.governikus.datasign.cookbook.types.request.DocumentToBeSigned;
 import de.governikus.datasign.cookbook.types.request.SealDocumentTransactionRequest;
@@ -27,7 +32,7 @@ public class SealDocumentExample extends AbstractExample {
 
     public void runExample() throws Exception {
         props.load(new FileInputStream("cookbook.properties"));
-        System.out.println("Running example with properties = " + props.getProperty("url"));
+        System.out.println("Running example with properties = " + props);
 
         var accessToken = retrieveAccessToken(props);
 
@@ -49,7 +54,7 @@ public class SealDocumentExample extends AbstractExample {
         var sealId = props.getProperty("example.sealId");
 
         // POST /documents
-        var uploadedDocument = send(POST("/documents", new FileInputStream("sample.pdf").readAllBytes())
+        var uploadedDocument = send(POST("/documents", new FileInputStream("sample.docx").readAllBytes())
                         .header("provider", provider.toString())
                         .header("Authorization", accessToken.toAuthorizationHeader()),
                 UploadedDocument.class);
@@ -60,7 +65,7 @@ public class SealDocumentExample extends AbstractExample {
                         new SealDocumentTransactionRequest(
                                 sealId,
                                 new DocumentSignatureParameter(SignatureNiveau.QUALIFIED, SignatureLevel.B_LT,
-                                        HashAlgorithm.SHA_256, SignatureFormat.CADES, SignaturePackaging.ENVELOPING),
+                                        HashAlgorithm.SHA_256, SignatureFormat.CADES, SignaturePackaging.ENVELOPING, null),
                                 List.of(new DocumentToBeSigned(uploadedDocument.documentId(), null, null)),
                                 timestampProvider))
                         .header("provider", provider.toString())
@@ -75,15 +80,14 @@ public class SealDocumentExample extends AbstractExample {
                 .header("Authorization", accessToken.toAuthorizationHeader()));
 
         // check if the signature is valid
-        var report = DSSFactory.signedDocumentValidator(new InMemoryDocument(new FileInputStream("sample.docx")),
-                new InMemoryDocument(pkcs7SignatureBytes)).validateDocument().getSimpleReport();
+        var report = DSSFactory.signedDocumentValidator(new InMemoryDocument(pkcs7SignatureBytes)).validateDocument().getSimpleReport();
         var indication = report.getIndication(report.getFirstSignatureId()).name();
         if (indication.equals("FAILED") || indication.equals("TOTAL_FAILED") || indication.equals("NO_SIGNATURE_FOUND")) {
             System.err.println("signature is not valid");
         }
 
         writeToDisk(pkcs7SignatureBytes, "sample_sealed.docx.p7s");
-        System.out.println("sample.pdf is now sealed and the signature is written to disk as sample_sealed.docx.p7s");
+        System.out.println("sample.docx is now sealed and the signature is written to disk as sample_sealed.docx.p7s");
     }
 
 }

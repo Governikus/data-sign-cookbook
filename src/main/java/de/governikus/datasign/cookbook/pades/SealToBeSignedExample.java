@@ -1,8 +1,15 @@
 package de.governikus.datasign.cookbook.pades;
 
 import de.governikus.datasign.cookbook.AbstractExample;
-import de.governikus.datasign.cookbook.types.*;
-import de.governikus.datasign.cookbook.types.request.*;
+import de.governikus.datasign.cookbook.types.HashAlgorithm;
+import de.governikus.datasign.cookbook.types.SealProvider;
+import de.governikus.datasign.cookbook.types.SignatureAlgorithm;
+import de.governikus.datasign.cookbook.types.SignatureNiveau;
+import de.governikus.datasign.cookbook.types.request.Digest;
+import de.governikus.datasign.cookbook.types.request.SealToBeSignedTransactionRequest;
+import de.governikus.datasign.cookbook.types.request.TimestampRequest;
+import de.governikus.datasign.cookbook.types.request.ToBeSigned;
+import de.governikus.datasign.cookbook.types.request.ToBeSignedSignatureParameter;
 import de.governikus.datasign.cookbook.types.response.AvailableSeals;
 import de.governikus.datasign.cookbook.types.response.Certificate;
 import de.governikus.datasign.cookbook.types.response.Timestamps;
@@ -35,7 +42,7 @@ public class SealToBeSignedExample extends AbstractExample {
 
     public void runExample() throws Exception {
         props.load(new FileInputStream("cookbook.properties"));
-        System.out.println("Running example with properties = " + props.getProperty("url"));
+        System.out.println("Running example with properties = " + props);
 
         var accessToken = retrieveAccessToken(props);
 

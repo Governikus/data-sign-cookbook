@@ -1,7 +1,12 @@
 package de.governikus.datasign.cookbook.cades;
 
 import de.governikus.datasign.cookbook.AbstractExample;
-import de.governikus.datasign.cookbook.types.*;
+import de.governikus.datasign.cookbook.types.HashAlgorithm;
+import de.governikus.datasign.cookbook.types.SignProvider;
+import de.governikus.datasign.cookbook.types.SignatureFormat;
+import de.governikus.datasign.cookbook.types.SignatureLevel;
+import de.governikus.datasign.cookbook.types.SignatureNiveau;
+import de.governikus.datasign.cookbook.types.SignaturePackaging;
 import de.governikus.datasign.cookbook.types.request.DocumentSignatureParameter;
 import de.governikus.datasign.cookbook.types.request.DocumentToBeSigned;
 import de.governikus.datasign.cookbook.types.request.SignatureDocumentTransactionRequest;
@@ -33,7 +38,7 @@ public class SignDocumentExample extends AbstractExample {
 
     public void runExample() throws Exception {
         props.load(new FileInputStream("cookbook.properties"));
-        System.out.println("Running example with properties = " + props.getProperty("url"));
+        System.out.println("Running example with properties = " + props);
 
         var provider = SignProvider.valueOf(props.getProperty("example.signProvider"));
         switch (provider) {
@@ -75,7 +80,7 @@ public class SignDocumentExample extends AbstractExample {
         }
 
         // POST /documents
-        var uploadedDocument = send(POST("/documents", new FileInputStream("sample.pdf").readAllBytes())
+        var uploadedDocument = send(POST("/documents", new FileInputStream("sample.docx").readAllBytes())
                         .header("provider", provider.toString())
                         .header("Authorization", accessToken.toAuthorizationHeader()),
                 UploadedDocument.class);
@@ -87,7 +92,7 @@ public class SignDocumentExample extends AbstractExample {
                                 userId,
                                 null,
                                 new DocumentSignatureParameter(SignatureNiveau.QUALIFIED, SignatureLevel.B_LT,
-                                        HashAlgorithm.SHA_256, SignatureFormat.CADES, SignaturePackaging.ENVELOPING),
+                                        HashAlgorithm.SHA_256, SignatureFormat.CADES, SignaturePackaging.ENVELOPING, null),
                                 null,
                                 confirmsIdentity,
                                 null,
@@ -132,15 +137,14 @@ public class SignDocumentExample extends AbstractExample {
                 .header("Authorization", accessToken.toAuthorizationHeader()));
 
         // check if the signature is valid
-        var report = DSSFactory.signedDocumentValidator(new InMemoryDocument(new FileInputStream("sample.docx")),
-                new InMemoryDocument(pkcs7SignatureBytes)).validateDocument().getSimpleReport();
+        var report = DSSFactory.signedDocumentValidator(new InMemoryDocument(pkcs7SignatureBytes)).validateDocument().getSimpleReport();
         var indication = report.getIndication(report.getFirstSignatureId()).name();
         if (indication.equals("FAILED") || indication.equals("TOTAL_FAILED") || indication.equals("NO_SIGNATURE_FOUND")) {
             System.err.println("signature is not valid");
         }
 
-        writeToDisk(pkcs7SignatureBytes, "sample_signed.pdf.p7s");
-        System.out.println("sample.pdf is now signed and the signature is written to disk as sample_signed.pdf.p7s");
+        writeToDisk(pkcs7SignatureBytes, "sample_signed.docx.p7s");
+        System.out.println("sample.docx is now signed and the signature is written to disk as sample_signed.docx.p7s");
     }
 
     public void runDTrustExample() throws Exception {
@@ -165,7 +169,7 @@ public class SignDocumentExample extends AbstractExample {
         }
 
         // POST /documents
-        var uploadedDocument = send(POST("/documents", new FileInputStream("sample.pdf").readAllBytes())
+        var uploadedDocument = send(POST("/documents", new FileInputStream("sample.docx").readAllBytes())
                         .header("provider", provider.toString())
                         .header("Authorization", accessToken.toAuthorizationHeader()),
                 UploadedDocument.class);
@@ -177,7 +181,7 @@ public class SignDocumentExample extends AbstractExample {
                                 userId,
                                 null,
                                 new DocumentSignatureParameter(SignatureNiveau.QUALIFIED, SignatureLevel.B_LT,
-                                        HashAlgorithm.SHA_256, SignatureFormat.CADES, SignaturePackaging.ENVELOPING),
+                                        HashAlgorithm.SHA_256, SignatureFormat.CADES, SignaturePackaging.ENVELOPING, null),
                                 // when redirectAfterPageVisitUrl is omitted, a fallback website is presented after the user's acknowledgment at the provider page
                                 null,
                                 null,
@@ -218,15 +222,14 @@ public class SignDocumentExample extends AbstractExample {
                 .header("Authorization", accessToken.toAuthorizationHeader()));
 
         // check if the signature is valid
-        var report = DSSFactory.signedDocumentValidator(new InMemoryDocument(new FileInputStream("sample.docx")),
-                new InMemoryDocument(pkcs7SignatureBytes)).validateDocument().getSimpleReport();
+        var report = DSSFactory.signedDocumentValidator(new InMemoryDocument(pkcs7SignatureBytes)).validateDocument().getSimpleReport();
         var indication = report.getIndication(report.getFirstSignatureId()).name();
         if (indication.equals("FAILED") || indication.equals("TOTAL_FAILED") || indication.equals("NO_SIGNATURE_FOUND")) {
             System.err.println("signature is not valid");
         }
 
-        writeToDisk(pkcs7SignatureBytes, "sample_signed.pdf.p7s");
-        System.out.println("sample.pdf is now signed and the signature is written to disk as sample_signed.pdf.p7s");
+        writeToDisk(pkcs7SignatureBytes, "sample_signed.docx.p7s");
+        System.out.println("sample.docx is now signed and the signature is written to disk as sample_signed.docx.p7s");
     }
 
     public void runSign8Example() throws Exception {
@@ -237,7 +240,7 @@ public class SignDocumentExample extends AbstractExample {
         var userId = props.getProperty("example.userId");
 
         // POST /documents
-        var uploadedDocument = send(POST("/documents", new FileInputStream("sample.pdf").readAllBytes())
+        var uploadedDocument = send(POST("/documents", new FileInputStream("sample.docx").readAllBytes())
                         .header("provider", provider.toString())
                         .header("Authorization", accessToken.toAuthorizationHeader()),
                 UploadedDocument.class);
@@ -249,7 +252,7 @@ public class SignDocumentExample extends AbstractExample {
                                 userId,
                                 null,
                                 new DocumentSignatureParameter(SignatureNiveau.QUALIFIED, SignatureLevel.B_LT,
-                                        HashAlgorithm.SHA_256, SignatureFormat.CADES, SignaturePackaging.ENVELOPING),
+                                        HashAlgorithm.SHA_256, SignatureFormat.CADES, SignaturePackaging.ENVELOPING, null),
                                 URI.create("https://www.governikus.de"),
                                 null,
                                 null,
@@ -260,10 +263,10 @@ public class SignDocumentExample extends AbstractExample {
 
         System.out.println("the pending transaction has state = " + transaction.state());
 
-        // perform 2FA by page visit
+        // acknowledge the transaction by page visit and retrieve code
         if (transaction.state() == DocumentSignTransaction.State.PAGE_VISIT_REQUIRED) {
-            System.out.println("The user must now acknowledgment the transaction by page visit to = " + transaction.pageVisitUrl());
-            var code = prompt("Enter code:");
+            System.out.println("The user must now acknowledge the transaction by page visit to = " + transaction.pageVisitUrl());
+            var code = prompt("Enter the <code> from your browser address bar www.governikus.de/?code=<code>:");
 
             // PUT /sign/document/transactions/{id}/2fa
             send(PUT("/sign/document/transactions/%s/2fa".formatted(transaction.id()),
@@ -281,7 +284,7 @@ public class SignDocumentExample extends AbstractExample {
                 DocumentSignTransaction.class);
 
         if (transaction.state() == DocumentSignTransaction.State.FINISHED) {
-            System.out.println("Transaction transitioned after 2FA into FINISHED state.");
+            System.out.println("Transaction transitioned into FINISHED state.");
         } else {
             System.err.println("Transaction did not transition into FINISHED state.");
             return;
@@ -295,15 +298,14 @@ public class SignDocumentExample extends AbstractExample {
                 .header("Authorization", accessToken.toAuthorizationHeader()));
 
         // check if the signature is valid
-        var report = DSSFactory.signedDocumentValidator(new InMemoryDocument(new FileInputStream("sample.docx")),
-                new InMemoryDocument(pkcs7SignatureBytes)).validateDocument().getSimpleReport();
+        var report = DSSFactory.signedDocumentValidator(new InMemoryDocument(pkcs7SignatureBytes)).validateDocument().getSimpleReport();
         var indication = report.getIndication(report.getFirstSignatureId()).name();
         if (indication.equals("FAILED") || indication.equals("TOTAL_FAILED") || indication.equals("NO_SIGNATURE_FOUND")) {
             System.err.println("signature is not valid");
         }
 
-        writeToDisk(pkcs7SignatureBytes, "sample_signed.pdf.p7s");
-        System.out.println("sample.pdf is now signed and the signature is written to disk as sample_signed.pdf.p7s");
+        writeToDisk(pkcs7SignatureBytes, "sample_signed.docx.p7s");
+        System.out.println("sample.docx is now signed and the signature is written to disk as sample_signed.docx.p7s");
     }
 
     public void runStoredKeysExample() throws Exception {
@@ -313,7 +315,6 @@ public class SignDocumentExample extends AbstractExample {
         var timestampProvider = props.getProperty("example.timestampProvider");
 
         var userId = props.getProperty("example.userId");
-        var certificateId = props.getProperty("example.certificateId");
 
         // GET /users/{userId}
         var user = send(
@@ -329,8 +330,14 @@ public class SignDocumentExample extends AbstractExample {
             return;
         }
 
+        // discover which certificates are available to the user
+        System.out.println("user's certificates  = " + user.certificates());
+
+        // here we use the certificate from our cookbook.properties file, make sure it exists
+        var certificateId = props.getProperty("example.certificateId");
+
         // POST /documents
-        var uploadedDocument = send(POST("/documents", new FileInputStream("sample.pdf").readAllBytes())
+        var uploadedDocument = send(POST("/documents", new FileInputStream("sample.docx").readAllBytes())
                         .header("provider", provider.toString())
                         .header("Authorization", accessToken.toAuthorizationHeader()),
                 UploadedDocument.class);
@@ -342,7 +349,7 @@ public class SignDocumentExample extends AbstractExample {
                                 userId,
                                 UUID.fromString(certificateId),
                                 new DocumentSignatureParameter(SignatureNiveau.ADVANCED, SignatureLevel.B_LT,
-                                        HashAlgorithm.SHA_256, SignatureFormat.CADES, SignaturePackaging.ENVELOPING),
+                                        HashAlgorithm.SHA_256, SignatureFormat.CADES, SignaturePackaging.ENVELOPING, null),
                                 null,
                                 null,
                                 timestampProvider,
@@ -359,15 +366,14 @@ public class SignDocumentExample extends AbstractExample {
                 .header("Authorization", accessToken.toAuthorizationHeader()));
 
         // check if the signature is valid
-        var report = DSSFactory.signedDocumentValidator(new InMemoryDocument(new FileInputStream("sample.docx")),
-                new InMemoryDocument(pkcs7SignatureBytes)).validateDocument().getSimpleReport();
+        var report = DSSFactory.signedDocumentValidator(new InMemoryDocument(pkcs7SignatureBytes)).validateDocument().getSimpleReport();
         var indication = report.getIndication(report.getFirstSignatureId()).name();
         if (indication.equals("FAILED") || indication.equals("TOTAL_FAILED") || indication.equals("NO_SIGNATURE_FOUND")) {
             System.err.println("signature is not valid");
         }
 
-        writeToDisk(pkcs7SignatureBytes, "sample_signed.pdf.p7s");
-        System.out.println("sample.pdf is now signed and the signature is written to disk as sample_signed.pdf.p7s");
+        writeToDisk(pkcs7SignatureBytes, "sample_signed.docx.p7s");
+        System.out.println("sample.docx is now signed and the signature is written to disk as sample_signed.docx.p7s");
     }
 
     private String prompt(String toDisplay) {

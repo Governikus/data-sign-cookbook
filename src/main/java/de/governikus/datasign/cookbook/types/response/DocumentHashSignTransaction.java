@@ -4,7 +4,8 @@ import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 
-public record DocumentHashSignTransaction(UUID id, State state, URI pageVisitUrl, String tanSendTo, List<CMSSignedData> results) {
+public record DocumentHashSignTransaction(UUID id, State state, URI pageVisitUrl, String tanSendTo,
+                                          List<SignedData> results, String signedDataMimeType) {
 
     public enum State {
         FINISHED, TAN_REQUIRED, PAGE_VISIT_REQUIRED

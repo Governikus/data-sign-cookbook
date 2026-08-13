@@ -1,19 +1,21 @@
 package de.governikus.datasign.cookbook.pades;
 
 import de.governikus.datasign.cookbook.AbstractExample;
-import de.governikus.datasign.cookbook.types.*;
-import de.governikus.datasign.cookbook.types.request.*;
+import de.governikus.datasign.cookbook.types.HashAlgorithm;
+import de.governikus.datasign.cookbook.types.SealProvider;
+import de.governikus.datasign.cookbook.types.SignatureFormat;
+import de.governikus.datasign.cookbook.types.SignatureLevel;
+import de.governikus.datasign.cookbook.types.SignatureNiveau;
+import de.governikus.datasign.cookbook.types.SignaturePackaging;
+import de.governikus.datasign.cookbook.types.request.DocumentHash;
+import de.governikus.datasign.cookbook.types.request.DocumentSignatureParameter;
+import de.governikus.datasign.cookbook.types.request.SealDocumentHashTransactionRequest;
 import de.governikus.datasign.cookbook.types.response.AvailableSeals;
 import de.governikus.datasign.cookbook.types.response.DocumentHashSealTransaction;
-import de.governikus.datasign.cookbook.types.response.DocumentSealTransaction;
-import de.governikus.datasign.cookbook.types.response.UploadedDocument;
 import de.governikus.datasign.cookbook.util.DSSFactory;
 import eu.europa.esig.dss.cms.CMSSignedDocument;
 import eu.europa.esig.dss.enumerations.DigestAlgorithm;
-import eu.europa.esig.dss.enumerations.EncryptionAlgorithm;
 import eu.europa.esig.dss.model.InMemoryDocument;
-import eu.europa.esig.dss.model.SignatureValue;
-import eu.europa.esig.dss.model.x509.CertificateToken;
 import eu.europa.esig.dss.pades.PAdESSignatureParameters;
 import eu.europa.esig.dss.spi.DSSUtils;
 
@@ -34,7 +36,7 @@ public class SealDocumentHashExample extends AbstractExample {
 
     public void runExample() throws Exception {
         props.load(new FileInputStream("cookbook.properties"));
-        System.out.println("Running example with properties = " + props.getProperty("url"));
+        System.out.println("Running example with properties = " + props);
 
         var accessToken = retrieveAccessToken(props);
 
@@ -68,7 +70,7 @@ public class SealDocumentHashExample extends AbstractExample {
                         new SealDocumentHashTransactionRequest(
                                 sealId,
                                 new DocumentSignatureParameter(SignatureNiveau.QUALIFIED, SignatureLevel.B_LT,
-                                        HashAlgorithm.SHA_256, SignatureFormat.PADES, SignaturePackaging.ENVELOPED),
+                                        HashAlgorithm.SHA_256, SignatureFormat.PADES, SignaturePackaging.ENVELOPED, null),
                                 List.of(new DocumentHash(documentHashId, documentHash)), timestampProvider))
                         .header("provider", provider.toString())
                         .header("Authorization", accessToken.toAuthorizationHeader()),
@@ -78,7 +80,7 @@ public class SealDocumentHashExample extends AbstractExample {
                 .filter(v -> v.id().equals(documentHashId)).findFirst().orElseThrow();
 
         // use the cms signed data to incorporate a signature into the unsigned document
-        var cmsSignedDocument = new CMSSignedDocument(DSSUtils.toCMSSignedData(cmsSignedData.cmsSignedData()));
+        var cmsSignedDocument = new CMSSignedDocument(DSSUtils.toCMSSignedData(cmsSignedData.signedData()));
         var signedDocument = DSSFactory.pAdESWithExternalCMSService().signDocument(unsignedDocument, signatureParameter, cmsSignedDocument);
 
         // check if the signature is valid

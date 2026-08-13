@@ -34,6 +34,13 @@ public class AbstractExample {
                 .header("Content-Type", "application/octet-stream");
     }
 
+    protected HttpRequest.Builder POST(String restPath, String json) {
+        return HttpRequest.newBuilder()
+                .POST(HttpRequest.BodyPublishers.ofString(json))
+                .uri(URI.create(props.getProperty("url")).resolve(restPath))
+                .header("Content-Type", "application/json");
+    }
+
     protected HttpRequest.Builder POST(String restPath, Object body) throws Exception {
         return HttpRequest.newBuilder()
                 .POST(HttpRequest.BodyPublishers.ofString(toJsonString(body)))
@@ -87,11 +94,11 @@ public class AbstractExample {
         return httpResponse;
     }
 
-    protected String toJsonString(Object request) {
+    private String toJsonString(Object request) {
         return createObjectMapper().writeValueAsString(request);
     }
 
-    protected <T> T fromJson(HttpResponse<String> httpResponse, Class<T> responseType) {
+    private <T> T fromJson(HttpResponse<String> httpResponse, Class<T> responseType) {
         return createObjectMapper().readValue(httpResponse.body(), responseType);
     }
 

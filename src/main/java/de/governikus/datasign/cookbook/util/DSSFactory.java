@@ -2,6 +2,7 @@ package de.governikus.datasign.cookbook.util;
 
 import eu.europa.esig.dss.cades.signature.CAdESService;
 import eu.europa.esig.dss.enumerations.DigestAlgorithm;
+import eu.europa.esig.dss.jades.signature.JAdESService;
 import eu.europa.esig.dss.model.DSSDocument;
 import eu.europa.esig.dss.model.DSSException;
 import eu.europa.esig.dss.model.TimestampBinary;
@@ -54,9 +55,19 @@ public class DSSFactory {
         return new CAdESService(certificateVerifierForLtv());
     }
 
+    public static JAdESService jAdESService() {
+        return new JAdESService(certificateVerifierForLtv());
+    }
+
     public static SignedDocumentValidator signedDocumentValidator(DSSDocument unsignedDocument, DSSDocument signedDocument) {
         var validator = SignedDocumentValidator.fromDocument(signedDocument);
         validator.setDetachedContents(List.of(unsignedDocument));
+        validator.setCertificateVerifier(offlineCertificateVerifier());
+        return validator;
+    }
+
+    public static SignedDocumentValidator signedDocumentValidator(DSSDocument signedDocument) {
+        var validator = SignedDocumentValidator.fromDocument(signedDocument);
         validator.setCertificateVerifier(offlineCertificateVerifier());
         return validator;
     }
