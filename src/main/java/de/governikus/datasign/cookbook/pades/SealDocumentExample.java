@@ -1,16 +1,8 @@
 package de.governikus.datasign.cookbook.pades;
 
 import de.governikus.datasign.cookbook.AbstractExample;
-import de.governikus.datasign.cookbook.types.HashAlgorithm;
-import de.governikus.datasign.cookbook.types.SealProvider;
-import de.governikus.datasign.cookbook.types.SignatureFormat;
-import de.governikus.datasign.cookbook.types.SignatureLevel;
-import de.governikus.datasign.cookbook.types.SignatureNiveau;
-import de.governikus.datasign.cookbook.types.SignaturePackaging;
-import de.governikus.datasign.cookbook.types.request.DocumentSignatureParameter;
-import de.governikus.datasign.cookbook.types.request.DocumentToBeSigned;
-import de.governikus.datasign.cookbook.types.request.SealDocumentTransactionRequest;
-import de.governikus.datasign.cookbook.types.request.VisualParameter;
+import de.governikus.datasign.cookbook.types.*;
+import de.governikus.datasign.cookbook.types.request.*;
 import de.governikus.datasign.cookbook.types.response.AvailableSeals;
 import de.governikus.datasign.cookbook.types.response.DocumentSealTransaction;
 import de.governikus.datasign.cookbook.types.response.UploadedDocument;
@@ -60,6 +52,15 @@ public class SealDocumentExample extends AbstractExample {
                         .header("Authorization", accessToken.toAuthorizationHeader()),
                 UploadedDocument.class);
 
+        // POST /visual-representations/previews (optional)
+        var visualRepresentationPreview = retrieveBytes(POST("/visual-representations/previews",
+                new VisualRepresentationPreviewRequest(EIDASType.SEAL, true, false, null,
+                        "Erika Musterfrau", "Governikus Software GmbH", "DATA Sign",
+                        "Developer", null, null, true))
+                        .header("Authorization", accessToken.toAuthorizationHeader()));
+
+        writeToDisk(visualRepresentationPreview, "visual-representation-preview.png");
+
         // POST /seal/document/transactions
         var transaction = send(
                 POST("/seal/document/transactions",
@@ -71,7 +72,11 @@ public class SealDocumentExample extends AbstractExample {
                                         null,
                                         new VisualParameter(1,
                                                 new VisualParameter.RelativeCoordinate(0.68f, 0.88f),
-                                                0.3f, 0.1f, null, null))),
+                                                0.3f, 0.1f, new
+                                                VisualParameter.ModifyVisualRepresentation(true,
+                                                false, null, "Erika Musterfrau",
+                                                null, null, null, null,
+                                                null, true)))),
                                 timestampProvider))
                         .header("provider", provider.toString())
                         .header("Authorization", accessToken.toAuthorizationHeader()),

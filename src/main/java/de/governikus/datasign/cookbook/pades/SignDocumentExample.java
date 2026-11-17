@@ -1,17 +1,8 @@
 package de.governikus.datasign.cookbook.pades;
 
 import de.governikus.datasign.cookbook.AbstractExample;
-import de.governikus.datasign.cookbook.types.HashAlgorithm;
-import de.governikus.datasign.cookbook.types.SignProvider;
-import de.governikus.datasign.cookbook.types.SignatureFormat;
-import de.governikus.datasign.cookbook.types.SignatureLevel;
-import de.governikus.datasign.cookbook.types.SignatureNiveau;
-import de.governikus.datasign.cookbook.types.SignaturePackaging;
-import de.governikus.datasign.cookbook.types.request.DocumentSignatureParameter;
-import de.governikus.datasign.cookbook.types.request.DocumentToBeSigned;
-import de.governikus.datasign.cookbook.types.request.SignatureDocumentTransactionRequest;
-import de.governikus.datasign.cookbook.types.request.TanAuthorizeRequest;
-import de.governikus.datasign.cookbook.types.request.VisualParameter;
+import de.governikus.datasign.cookbook.types.*;
+import de.governikus.datasign.cookbook.types.request.*;
 import de.governikus.datasign.cookbook.types.response.DocumentSignTransaction;
 import de.governikus.datasign.cookbook.types.response.UploadedDocument;
 import de.governikus.datasign.cookbook.types.response.User;
@@ -86,6 +77,15 @@ public class SignDocumentExample extends AbstractExample {
                         .header("Authorization", accessToken.toAuthorizationHeader()),
                 UploadedDocument.class);
 
+        // POST /visual-representations/previews (optional)
+        var visualRepresentationPreview = retrieveBytes(POST("/visual-representations/previews",
+                new VisualRepresentationPreviewRequest(EIDASType.SIGNATURE, true, false, null,
+                        "Erika Musterfrau", "Governikus Software GmbH", "DATA Sign",
+                        "Developer", null, null, true))
+                .header("Authorization", accessToken.toAuthorizationHeader()));
+
+        writeToDisk(visualRepresentationPreview, "visual-representation-preview.png");
+
         // POST /sign/document/transactions
         var transaction = send(
                 POST("/sign/document/transactions",
@@ -100,7 +100,11 @@ public class SignDocumentExample extends AbstractExample {
                                 List.of(new DocumentToBeSigned(uploadedDocument.documentId(),
                                         null,
                                         new VisualParameter(1, new VisualParameter.RelativeCoordinate(0.68f, 0.88f),
-                                                0.3f, 0.1f, null, null)))))
+                                                0.3f, 0.1f,
+                                                new VisualParameter.ModifyVisualRepresentation(true,
+                                                false, null, null,
+                                                "Governikus Software GmbH", "DATA Sign",
+                                                "Developer", null, null, true))))))
                         .header("provider", provider.toString())
                         .header("Authorization", accessToken.toAuthorizationHeader()),
                 DocumentSignTransaction.class);
@@ -173,6 +177,15 @@ public class SignDocumentExample extends AbstractExample {
             return;
         }
 
+        // POST /visual-representations/previews (optional)
+        var visualRepresentationPreview = retrieveBytes(POST("/visual-representations/previews",
+                new VisualRepresentationPreviewRequest(EIDASType.SIGNATURE, true, false, null,
+                        "Erika Musterfrau", "Governikus Software GmbH", "DATA Sign",
+                        "Developer", null, null, true))
+                .header("Authorization", accessToken.toAuthorizationHeader()));
+
+        writeToDisk(visualRepresentationPreview, "visual-representation-preview.png");
+
         // POST /documents
         var uploadedDocument = send(POST("/documents", new FileInputStream("sample.pdf").readAllBytes())
                         .header("provider", provider.toString())
@@ -194,7 +207,11 @@ public class SignDocumentExample extends AbstractExample {
                                 List.of(new DocumentToBeSigned(uploadedDocument.documentId(),
                                         null,
                                         new VisualParameter(1, new VisualParameter.RelativeCoordinate(0.68f, 0.88f),
-                                        0.3f, 0.1f, null, null)))))
+                                        0.3f, 0.1f,
+                                                new VisualParameter.ModifyVisualRepresentation(true,
+                                                false, null, null,
+                                                "Governikus Software GmbH", "DATA Sign",
+                                                "Developer", null, null, true))))))
                         .header("provider", provider.toString())
                         .header("Authorization", accessToken.toAuthorizationHeader()),
                 DocumentSignTransaction.class);
@@ -248,6 +265,15 @@ public class SignDocumentExample extends AbstractExample {
 
         var userId = props.getProperty("example.userId");
 
+        // POST /visual-representations/previews (optional)
+        var visualRepresentationPreview = retrieveBytes(POST("/visual-representations/previews",
+                new VisualRepresentationPreviewRequest(EIDASType.SIGNATURE, true, false, null,
+                        "Erika Musterfrau", "Governikus Software GmbH", "DATA Sign",
+                        "Developer", null, null, true))
+                .header("Authorization", accessToken.toAuthorizationHeader()));
+
+        writeToDisk(visualRepresentationPreview, "visual-representation-preview.png");
+
         // POST /documents
         var uploadedDocument = send(POST("/documents", new FileInputStream("sample.pdf").readAllBytes())
                         .header("provider", provider.toString())
@@ -268,7 +294,11 @@ public class SignDocumentExample extends AbstractExample {
                                 List.of(new DocumentToBeSigned(uploadedDocument.documentId(),
                                         null,
                                         new VisualParameter(1, new VisualParameter.RelativeCoordinate(0.68f, 0.88f),
-                                                0.3f, 0.1f, null, null)))))
+                                                0.3f, 0.1f,
+                                                new VisualParameter.ModifyVisualRepresentation(true,
+                                                false, null, null,
+                                                "Governikus Software GmbH", "DATA Sign",
+                                                "Developer", null, null, true))))))
                         .header("provider", provider.toString())
                         .header("Authorization", accessToken.toAuthorizationHeader()),
                 DocumentSignTransaction.class);
@@ -348,6 +378,15 @@ public class SignDocumentExample extends AbstractExample {
         // here we use the certificate from our cookbook.properties file, make sure it exists
         var certificateId = props.getProperty("example.certificateId");
 
+        // POST /visual-representations/previews (optional)
+        var visualRepresentationPreview = retrieveBytes(POST("/visual-representations/previews",
+                new VisualRepresentationPreviewRequest(EIDASType.SIGNATURE, true, false, null,
+                        "Erika Musterfrau", "Governikus Software GmbH", "DATA Sign",
+                        "Developer", null, null, true))
+                .header("Authorization", accessToken.toAuthorizationHeader()));
+
+        writeToDisk(visualRepresentationPreview, "visual-representation-preview.png");
+
         // POST /documents
         var uploadedDocument = send(POST("/documents", new FileInputStream("sample.pdf").readAllBytes())
                         .header("provider", provider.toString())
@@ -368,7 +407,11 @@ public class SignDocumentExample extends AbstractExample {
                                 List.of(new DocumentToBeSigned(uploadedDocument.documentId(),
                                         null,
                                         new VisualParameter(1, new VisualParameter.RelativeCoordinate(0.68f, 0.88f),
-                                                0.3f, 0.1f, null, null)))))
+                                                0.3f, 0.1f,
+                                                new VisualParameter.ModifyVisualRepresentation(true,
+                                                false, null, null,
+                                                "Governikus Software GmbH", "DATA Sign",
+                                                "Developer", null, null, true))))))
                         .header("provider", provider.toString())
                         .header("Authorization", accessToken.toAuthorizationHeader()),
                 DocumentSignTransaction.class);
